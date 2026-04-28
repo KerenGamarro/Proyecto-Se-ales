@@ -1,23 +1,26 @@
 # Proyecto-Señales
-Objetivos
-• Aplicar lo aprendido en la iniciativa académica Procesamiento de Señales para implementar una
+# Objetivos
+Aplicar lo aprendido en la iniciativa académica Procesamiento de Señales para implementar una
 unidad de procesamiento de señales.
-• Utilizar la aplicación AppDesigner de Matlab para desarrollar la interfaz gráfica (front-end) y la
+Utilizar la aplicación AppDesigner de Matlab para desarrollar la interfaz gráfica (front-end) y la
 lógica (back-end) de la unidad de procesamiento.
+
 Duración: 4 semanas
-Los estudiantes diseñarán e implementarán una unidad de procesamiento de señales en tiempo real
-usando el microcontrolador STM32F446RE (embebido en la placa Nucleo-F446RE) y la aplicación
-AppDesigner de Matlab. Trabajarán en parejas (si el número de estudiantes de alguna sección es
-impar, habrá un grupo de tres).
-Instrucciones
+
+Los estudiantes diseñarán e implementarán una unidad de procesamiento de señales en tiempo real usando el microcontrolador STM32F446RE (embebido en la placa Nucleo-F446RE) y la aplicación AppDesigner de Matlab. Trabajarán en parejas (si el número de estudiantes de alguna sección es impar, habrá un grupo de tres).
+# Instrucciones
 El objetivo del proyecto es implementar una unidad de procesamiento de señales que cuente con un
-módulo físico y una interfaz gráfica.
-El módulo físico se implementará utilizando la placa Nucleo-F446RE y permitirá a) muestrear señales
-analógicas, b) enviar las señales muestreadas a una PC, c) realizar procesamiento/filtrado en tiempo
-real de las señales muestreadas y d) mostrar el resultado del procesamiento en un osciloscopio.
-La interfaz gráfica se desarrollará por medio de la aplicación AppDesigner de Matlab, y permitirá a)
-diseñar distintos filtros y efectos, b) leer las señales provenientes de la placa Nucleo-F446RE, c) cargar
-datos/señales pregrabadas de archivos existentes en la PC, d) aplicar el filtro o efecto a la señal y
+módulo físico y una interfaz gráfica. El módulo físico se implementará utilizando la placa Nucleo-F446RE y permitirá 
+muestrear señales analógicas, 
+enviar las señales muestreadas a una PC, 
+realizar procesamiento/filtrado en tiempo real de las señales muestreadas y 
+mostrar el resultado del procesamiento en un osciloscopio.
+
+La interfaz gráfica se desarrollará por medio de la aplicación AppDesigner de Matlab, y permitirá 
+diseñar distintos filtros y efectos, 
+leer las señales provenientes de la placa Nucleo-F446RE, 
+cargar datos/señales pregrabadas de archivos existentes en la PC, 
+aplicar el filtro o efecto a la señal y
 mostrar gráficos importantes (señal original, señal procesada, espectros de amplitud unilateral,
 respuesta en frecuencia, entre otros) y e) configurar los filtros y otros parámetros del módulo físico.
 Figura 1. Diagrama de Conexión de Proyecto
