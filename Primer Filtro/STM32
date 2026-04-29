@@ -84,7 +84,8 @@ void procesar_comando(char *cmd)
 		{
 			lambda = nuevo_lambda;
 
-			uart_len = sprintf(uart_buffer, "OK_LAMBDA,%.3f\r\n", lambda);
+			uint16_t lambda_mil = (uint16_t)(lambda * 1000.0f);
+			uart_len = sprintf(uart_buffer, "OK_LAMBDA=%u/1000\r\n", lambda_mil);
 			HAL_UART_Transmit(&huart2, (uint8_t*)uart_buffer, uart_len, HAL_MAX_DELAY);
 		}
 		else
