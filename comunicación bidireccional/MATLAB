@@ -1,0 +1,31 @@
+clear; clc;
+
+s = serialport("COM7", 115200);
+s.Timeout = 20;
+flush(s);
+
+write(s, uint8('C'), "uint8");
+
+linea = readline(s);
+disp(linea)
+
+while ~strcmp(strtrim(char(linea)), "BEGIN")
+    linea = readline(s);
+    disp(linea)
+end
+
+N = 1000;
+x = zeros(1,N);
+
+for k = 1:N
+    x(k) = str2double(readline(s));
+end
+
+fin = readline(s);
+disp(fin)
+
+plot(x);
+grid on;
+xlabel("Muestra");
+ylabel("ADC");
+title("Captura bajo demanda desde STM32");
