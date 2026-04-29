@@ -1,0 +1,36 @@
+clear; clc;
+
+s = serialport("COM7", 115200);
+s.Timeout = 20;
+flush(s);
+
+%writeline(s, "F,1");
+writeline(s, "F,0");
+disp(readline(s));
+
+writeline(s, "L,0.90");
+disp(readline(s));
+
+writeline(s, "C");
+disp(readline(s));
+
+linea = readline(s);
+while ~strcmp(strtrim(char(linea)), "BEGIN")
+    linea = readline(s);
+end
+
+N = 1000;
+x = zeros(1,N);
+
+for k = 1:N
+    x(k) = str2double(readline(s));
+end
+
+fin = readline(s);
+disp(fin)
+
+plot(x);
+grid on;
+xlabel("Muestra");
+ylabel("ADC");
+title("Filtro activado");
