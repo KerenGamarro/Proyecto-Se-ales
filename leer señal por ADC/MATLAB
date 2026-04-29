@@ -1,0 +1,18 @@
+clear; clc;
+
+s = serialport("COM7", 115200);
+flush(s);
+
+N = 1000;
+x = zeros(1,N);
+
+for k = 1:N
+    linea = readline(s);
+    x(k) = str2double(linea);
+end
+
+plot(x);
+grid on;
+xlabel("Muestra");
+ylabel("ADC");
+title("Lectura ADC desde STM32");
