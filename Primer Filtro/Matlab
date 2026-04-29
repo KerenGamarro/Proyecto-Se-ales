@@ -1,0 +1,34 @@
+clear; clc;
+
+s = serialport("COM7", 115200);
+s.Timeout = 20;
+flush(s);
+
+% Cambiar lambda
+writeline(s, "L,0.90");
+disp(readline(s));
+
+% Pedir captura
+writeline(s, "C");
+disp(readline(s));
+
+linea = readline(s);
+while ~strcmp(strtrim(char(linea)), "BEGIN")
+    linea = readline(s);
+end
+
+N = 1000;
+x = zeros(1,N);
+
+for k = 1:N
+    x(k) = str2double(readline(s));
+end
+
+fin = readline(s);
+disp(fin)
+
+plot(x);
+grid on;
+xlabel("Muestra");
+ylabel("ADC filtrado");
+title("Captura filtrada bajo demanda desde STM32");
