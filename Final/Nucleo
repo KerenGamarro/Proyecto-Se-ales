@@ -1,0 +1,606 @@
+/* USER CODE BEGIN Header */
+/*
+ * PROYECTO FINAL - ETAPA 4
+ * Comunicación STM32 Nucleo-F446RE con Matlab
+ *
+ * Comandos:
+ * C        -> Captura la cantidad configurada y la manda a Matlab
+ * L,0.90   -> Cambia lambda del filtro IIR
+ * F,0      -> Desactiva el filtro
+ * F,1      -> Activa el filtro
+ *
+ */
+/* USER CODE END Header */
+
+#include "main.h"
+
+/* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+/* USER CODE END Includes */
+
+ADC_HandleTypeDef hadc1;
+DAC_HandleTypeDef hdac;
+TIM_HandleTypeDef htim10;
+UART_HandleTypeDef huart2;
+
+
+/* USER CODE BEGIN PV */
+/* USER CODE BEGIN PV */
+
+#define MAX_SAMPLES 1000
+#define MAX_COEF 11   // Permite hasta orden 10: b0...b10 / a0...a10
+
+uint16_t adc_value = 0;
+uint16_t adc_buffer[MAX_SAMPLES];
+
+// Cantidad de muestras configurable desde Matlab.
+// Por seguridad se limita a MAX_SAMPLES.
+volatile uint16_t n_samples_cfg = 1000;
+
+volatile uint16_t sample_index = 0;
+volatile uint8_t capture_active = 0;
+volatile uint8_t capture_done = 0;
+
+uint8_t rx_data;
+char rx_buffer[60];
+uint8_t rx_index = 0;
+
+char uart_buffer[80];
+uint16_t uart_len = 0;
+
+uint16_t Fs = 1000;
+
+uint32_t timer_clk;
+uint32_t pclk;
+
+// Filtro simple con lambda, queda como respaldo
+float lambda = 0.90f;
+float x_n = 0.0f;
+float y_n = 0.0f;
+float y_n_1 = 0.0f;
+
+// Filtro ON/OFF
+uint8_t filter_enable = 1;
+
+// Coeficientes IIR generales enviados desde MATLAB
+float b_coef[MAX_COEF] = {1.0f};
+float a_coef[MAX_COEF] = {1.0f};
+
+float b_temp[MAX_COEF] = {0.0f};
+float a_temp[MAX_COEF] = {0.0f};
+
+float x_hist[MAX_COEF] = {0.0f};
+float y_hist[MAX_COEF] = {0.0f};
+
+uint8_t nB = 1;
+uint8_t nA = 1;
+
+uint8_t nB_temp = 0;
+uint8_t nA_temp = 0;
+
+uint8_t b_recibidos = 0;
+uint8_t a_recibidos = 0;
+
+uint8_t coeficientes_listos = 0;
+
+/* USER CODE END PV */
+
+/* USER CODE END PV */
+
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_TIM10_Init(void);
+static void MX_DAC_Init(void);
+
+/* USER CODE BEGIN 0 */
+
+void reiniciar_memorias_filtro(void)
+{
+	for (uint8_t i = 0; i < MAX_COEF; i++)
+	{
+		x_hist[i] = 0.0f;
+		y_hist[i] = 0.0f;
+	}
+
+	y_n_1 = 0.0f;
+}
+
+float aplicar_iir_general(float entrada) //aqui inicia el uso de los coeficientes
+{
+	float salida = 0.0f;
+
+	// Desplazar historial de entradas
+	for (int i = MAX_COEF - 1; i > 0; i--)
+	{
+		x_hist[i] = x_hist[i - 1];
+	}
+
+	x_hist[0] = entrada;
+
+	// Parte de entradas: b0x[n] + b1x[n-1] + ...
+	for (uint8_t i = 0; i < nB; i++)
+	{
+		salida += b_coef[i] * x_hist[i];
+	}
+
+	// Parte recursiva: -a1y[n-1] - a2y[n-2] ...
+	for (uint8_t i = 1; i < nA; i++)
+	{
+		salida -= a_coef[i] * y_hist[i - 1];
+	}
+
+	// Normalizar si a0 no es 1
+	if (a_coef[0] != 0.0f)
+	{
+		salida = salida / a_coef[0];
+	}
+
+	// Desplazar historial de salidas
+	for (int i = MAX_COEF - 1; i > 0; i--)
+	{
+		y_hist[i] = y_hist[i - 1];
+	}
+
+	y_hist[0] = salida;
+
+	return salida;
+}
+
+void procesar_comando(char *cmd)
+{
+	if (cmd[0] == 'C')
+	{
+		HAL_UART_Transmit(&huart2, (uint8_t*)"OK_CAPTURA\r\n", 12, HAL_MAX_DELAY);
+
+		sample_index = 0;
+		capture_done = 0;
+		capture_active = 1;
+	}
+
+	else if (strncmp(cmd, "N,", 2) == 0)
+	{
+		uint16_t nuevo_N = (uint16_t)atoi(&cmd[2]);
+
+		if (capture_active == 1)
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_N_BUSY\r\n", 12, HAL_MAX_DELAY);
+		}
+		else if (nuevo_N >= 100 && nuevo_N <= MAX_SAMPLES)
+		{
+			n_samples_cfg = nuevo_N;
+
+			uart_len = sprintf(uart_buffer, "OK_N=%u\r\n", n_samples_cfg);
+			HAL_UART_Transmit(&huart2, (uint8_t*)uart_buffer, uart_len, HAL_MAX_DELAY);
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_N\r\n", 7, HAL_MAX_DELAY);
+		}
+	}
+
+	else if (cmd[0] == 'L')
+	{
+		float nuevo_lambda = atof(&cmd[2]);
+
+		if (nuevo_lambda >= 0.0f && nuevo_lambda < 1.0f)
+		{
+			lambda = nuevo_lambda;
+			coeficientes_listos = 0; // vuelve al filtro simple con lambda
+
+			uint16_t lambda_mil = (uint16_t)(lambda * 1000.0f);
+			uart_len = sprintf(uart_buffer, "OK_LAMBDA=%u/1000\r\n", lambda_mil);
+			HAL_UART_Transmit(&huart2, (uint8_t*)uart_buffer, uart_len, HAL_MAX_DELAY);
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_LAMBDA\r\n", 12, HAL_MAX_DELAY);
+		}
+	}
+
+	else if (cmd[0] == 'F')
+	{
+		uint8_t nuevo_estado = (uint8_t)atoi(&cmd[2]);
+
+		if (nuevo_estado == 0 || nuevo_estado == 1)
+		{
+			filter_enable = nuevo_estado;
+
+			if (filter_enable == 1)
+			{
+				HAL_UART_Transmit(&huart2, (uint8_t*)"OK_FILTRO_ON\r\n", 14, HAL_MAX_DELAY);
+			}
+			else
+			{
+				HAL_UART_Transmit(&huart2, (uint8_t*)"OK_FILTRO_OFF\r\n", 15, HAL_MAX_DELAY);
+			}
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_FILTRO\r\n", 12, HAL_MAX_DELAY);
+		}
+	}
+
+	else if (strncmp(cmd, "NB,", 3) == 0)
+	{
+		nB_temp = (uint8_t)atoi(&cmd[3]);
+
+		if (nB_temp >= 1 && nB_temp <= MAX_COEF)
+		{
+			for (uint8_t i = 0; i < MAX_COEF; i++)
+			{
+				b_temp[i] = 0.0f;
+			}
+
+			b_recibidos = 0;
+			HAL_UART_Transmit(&huart2, (uint8_t*)"OK_NB\r\n", 7, HAL_MAX_DELAY);
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_NB\r\n", 8, HAL_MAX_DELAY);
+		}
+	}
+
+	else if (cmd[0] == 'B')
+	{
+		int indice = atoi(&cmd[2]);
+		char *p = strchr(&cmd[2], ',');
+
+		if (p != NULL && indice >= 1 && indice <= nB_temp && indice <= MAX_COEF)
+		{
+			float valor = atof(p + 1);
+			b_temp[indice - 1] = valor;
+			b_recibidos++;
+
+			HAL_UART_Transmit(&huart2, (uint8_t*)"OK_B\r\n", 6, HAL_MAX_DELAY);
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_B\r\n", 7, HAL_MAX_DELAY);
+		}
+	}
+
+	else if (strncmp(cmd, "NA,", 3) == 0)
+	{
+		nA_temp = (uint8_t)atoi(&cmd[3]);
+
+		if (nA_temp >= 1 && nA_temp <= MAX_COEF)
+		{
+			for (uint8_t i = 0; i < MAX_COEF; i++)
+			{
+				a_temp[i] = 0.0f;
+			}
+
+			a_recibidos = 0;
+			HAL_UART_Transmit(&huart2, (uint8_t*)"OK_NA\r\n", 7, HAL_MAX_DELAY);
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_NA\r\n", 8, HAL_MAX_DELAY);
+		}
+	}
+
+	else if (cmd[0] == 'A')
+	{
+		int indice = atoi(&cmd[2]);
+		char *p = strchr(&cmd[2], ',');
+
+		if (p != NULL && indice >= 1 && indice <= nA_temp && indice <= MAX_COEF)
+		{
+			float valor = atof(p + 1);
+			a_temp[indice - 1] = valor;
+			a_recibidos++;
+
+			HAL_UART_Transmit(&huart2, (uint8_t*)"OK_A\r\n", 6, HAL_MAX_DELAY);
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_A\r\n", 7, HAL_MAX_DELAY);
+		}
+	}
+
+	else if (strcmp(cmd, "END_COEF") == 0)
+	{
+		if (nB_temp >= 1 && nA_temp >= 1 && a_temp[0] != 0.0f)
+		{
+			nB = nB_temp;
+			nA = nA_temp;
+
+			for (uint8_t i = 0; i < MAX_COEF; i++)
+			{
+				b_coef[i] = b_temp[i];
+				a_coef[i] = a_temp[i];
+			}
+
+			coeficientes_listos = 1;
+			filter_enable = 1;
+			reiniciar_memorias_filtro();
+
+			HAL_UART_Transmit(&huart2, (uint8_t*)"OK_COEF\r\n", 9, HAL_MAX_DELAY);
+		}
+		else
+		{
+			HAL_UART_Transmit(&huart2, (uint8_t*)"ERR_COEF\r\n", 10, HAL_MAX_DELAY);
+		}
+	}
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if (htim->Instance == TIM10)
+	{
+		// ADC siempre activo para que el DAC pueda verse en osciloscopio
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 10);
+		adc_value = HAL_ADC_GetValue(&hadc1);
+
+		x_n = (float)adc_value;
+
+		if (filter_enable == 0)
+		{
+			y_n = x_n;
+		}
+		else
+		{
+			if (coeficientes_listos == 1)
+			{
+				y_n = aplicar_iir_general(x_n);
+			}
+			else
+			{
+				y_n = (1.0f - lambda)*x_n + lambda*y_n_1;
+				y_n_1 = y_n;
+			}
+		}
+
+		if (y_n > 4095.0f) y_n = 4095.0f;
+		if (y_n < 0.0f)    y_n = 0.0f;
+
+		HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint16_t)y_n);
+
+		if (capture_active == 1)
+		{
+			if (sample_index < n_samples_cfg && sample_index < MAX_SAMPLES)
+			{
+				adc_buffer[sample_index] = (uint16_t)y_n;
+				sample_index++;
+			}
+
+			if (sample_index >= n_samples_cfg)
+			{
+				capture_active = 0;
+				capture_done = 1;
+			}
+		}
+	}
+}
+
+/* USER CODE END 0 */
+
+int main(void)
+{
+  HAL_Init();
+
+  SystemClock_Config();
+
+  MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  MX_ADC1_Init();
+  MX_TIM10_Init();
+  MX_DAC_Init();
+
+  HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+  HAL_TIM_Base_Start_IT(&htim10);
+
+  while (1)
+  {
+	  if (HAL_UART_Receive(&huart2, &rx_data, 1, 10) == HAL_OK)
+	  {
+		  if (rx_data == '\n' || rx_data == '\r')
+		  {
+			  if (rx_index > 0)
+			  {
+				  rx_buffer[rx_index] = '\0';
+				  procesar_comando(rx_buffer);
+				  rx_index = 0;
+			  }
+		  }
+		  else
+		  {
+			  if (rx_index < sizeof(rx_buffer) - 1)
+			  {
+				  rx_buffer[rx_index++] = rx_data;
+			  }
+		  }
+	  }
+
+	  if (capture_done == 1)
+	  {
+	  	capture_done = 0;
+
+	  	HAL_UART_Transmit(&huart2, (uint8_t*)"BEGIN\r\n", 7, HAL_MAX_DELAY);
+
+	  	for (uint16_t i = 0; i < n_samples_cfg; i++)
+	  	{
+	  		uart_len = sprintf(uart_buffer, "%u\r\n", adc_buffer[i]);
+	  		HAL_UART_Transmit(&huart2, (uint8_t*)uart_buffer, uart_len, HAL_MAX_DELAY);
+	  	}
+
+	  	HAL_UART_Transmit(&huart2, (uint8_t*)"END\r\n", 5, HAL_MAX_DELAY);
+	  }
+  }
+}
+
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 16;
+  RCC_OscInitStruct.PLL.PLLN = 336;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
+                              | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+static void MX_ADC1_Init(void)
+{
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+static void MX_DAC_Init(void)
+{
+  DAC_ChannelConfTypeDef sConfig = {0};
+
+  hdac.Instance = DAC;
+
+  if (HAL_DAC_Init(&hdac) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+
+  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+static void MX_TIM10_Init(void)
+{
+  pclk = HAL_RCC_GetPCLK2Freq();
+
+  if ((RCC->CFGR & RCC_CFGR_PPRE2) != RCC_CFGR_PPRE2_DIV1)
+  {
+	  timer_clk = pclk * 2;
+  }
+  else
+  {
+	  timer_clk = pclk;
+  }
+
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 8399;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = ((timer_clk / (htim10.Init.Prescaler + 1)) / Fs) - 1;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+static void MX_USART2_UART_Init(void)
+{
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+  GPIO_InitStruct.Pin = B1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LD2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+}
+
+void Error_Handler(void)
+{
+  __disable_irq();
+
+  while (1)
+  {
+  }
+}
+
+#ifdef USE_FULL_ASSERT
+void assert_failed(uint8_t *file, uint32_t line)
+{
+}
+#endif
