@@ -1,0 +1,2255 @@
+classdef app1 < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                        matlab.ui.Figure
+        ExtrasPanel                     matlab.ui.container.Panel
+        DetenerAudioButton              matlab.ui.control.Button
+        AudioProcesadoButton            matlab.ui.control.Button
+        AudiooriginalButton             matlab.ui.control.Button
+        CargararchivosvariosButton      matlab.ui.control.Button
+        TabGroup2                       matlab.ui.container.TabGroup
+        SealesTab                       matlab.ui.container.Tab
+        UIAxes2                         matlab.ui.control.UIAxes
+        UIAxes                          matlab.ui.control.UIAxes
+        FrecuenciaTab                   matlab.ui.container.Tab
+        UIAxes_5                        matlab.ui.control.UIAxes
+        UIAxes_4                        matlab.ui.control.UIAxes
+        UIAxes_3                        matlab.ui.control.UIAxes
+        UIAxes_2                        matlab.ui.control.UIAxes
+        AudioTab_2                      matlab.ui.container.Tab
+        UIAxes_9                        matlab.ui.control.UIAxes
+        UIAxes_8                        matlab.ui.control.UIAxes
+        UIAxes_7                        matlab.ui.control.UIAxes
+        UIAxes_6                        matlab.ui.control.UIAxes
+        ExportarPanel                   matlab.ui.container.Panel
+        GuardarMATButton                matlab.ui.control.Button
+        GuardarCSVButton                matlab.ui.control.Button
+        DiseoDSPPanel                   matlab.ui.container.Panel
+        TabGroup                        matlab.ui.container.TabGroup
+        FIRTab                          matlab.ui.container.Tab
+        FIRlistoLabel                   matlab.ui.control.Label
+        Fc2EditField                    matlab.ui.control.NumericEditField
+        Fc2EditFieldLabel               matlab.ui.control.Label
+        Fc1EditField                    matlab.ui.control.NumericEditField
+        Fc1EditFieldLabel               matlab.ui.control.Label
+        OrdenEditField_3                matlab.ui.control.NumericEditField
+        OrdenEditField_3Label           matlab.ui.control.Label
+        TipodeFiltroDropDown            matlab.ui.control.DropDown
+        TipodeFiltroDropDownLabel       matlab.ui.control.Label
+        DisearFIRButton                 matlab.ui.control.Button
+        IIRTab                          matlab.ui.container.Tab
+        IIRlistoLabel                   matlab.ui.control.Label
+        AtenuacinEditField              matlab.ui.control.NumericEditField
+        AtenuacinEditFieldLabel         matlab.ui.control.Label
+        RippleEditField                 matlab.ui.control.NumericEditField
+        RippleEditFieldLabel            matlab.ui.control.Label
+        OrdenEditField_2                matlab.ui.control.NumericEditField
+        OrdenEditField_2Label           matlab.ui.control.Label
+        FcEditField                     matlab.ui.control.NumericEditField
+        FcEditFieldLabel                matlab.ui.control.Label
+        DisearIIRButton                 matlab.ui.control.Button
+        TipoFiltroDropDown_2            matlab.ui.control.DropDown
+        TipoFiltroDropDown_2Label       matlab.ui.control.Label
+        EfectosTab                      matlab.ui.container.Tab
+        NiveldedistorsinEditField       matlab.ui.control.NumericEditField
+        NiveldedistorsinEditFieldLabel  matlab.ui.control.Label
+        GananciaEditField               matlab.ui.control.NumericEditField
+        GananciaEditFieldLabel          matlab.ui.control.Label
+        TiempoDelayEditField            matlab.ui.control.NumericEditField
+        TiempoDelayEditFieldLabel       matlab.ui.control.Label
+        EfectoDropDown                  matlab.ui.control.DropDown
+        EfectoDropDownLabel             matlab.ui.control.Label
+        AplicarEfectoButton             matlab.ui.control.Button
+        CoeficientesTab                 matlab.ui.container.Tab
+        CoeficientesbEditField          matlab.ui.control.EditField
+        CoeficientesbEditFieldLabel     matlab.ui.control.Label
+        CoeficientesaEditField_2        matlab.ui.control.EditField
+        CoeficientesaEditField_2Label   matlab.ui.control.Label
+        EnviarCoeficientesButton        matlab.ui.control.Button
+        ProcesamientoPanel              matlab.ui.container.Panel
+        radmuestraCheckBox              matlab.ui.control.CheckBox
+        MostrarHzCheckBox               matlab.ui.control.CheckBox
+        MostrardbCheckBox               matlab.ui.control.CheckBox
+        AplicarFiltroButton             matlab.ui.control.Button
+        TomadedatosPanel                matlab.ui.container.Panel
+        LambdaEditField                 matlab.ui.control.NumericEditField
+        LambdaEditFieldLabel            matlab.ui.control.Label
+        AjustarGraficaButton            matlab.ui.control.Button
+        EnviarlambdaButton              matlab.ui.control.Button
+        CargararchivomatButton          matlab.ui.control.Button
+        CapturadedatosButton            matlab.ui.control.Button
+        CanalADCDropDown                matlab.ui.control.DropDown
+        CanalADCDropDownLabel           matlab.ui.control.Label
+        FsHzEditField                   matlab.ui.control.NumericEditField
+        FsHzEditFieldLabel              matlab.ui.control.Label
+        NumerodemuestrasEditField       matlab.ui.control.NumericEditField
+        NumerodemuestrasEditFieldLabel  matlab.ui.control.Label
+        SealesLabel                     matlab.ui.control.Label
+        ControlesLabel                  matlab.ui.control.Label
+        ConexinPanel                    matlab.ui.container.Panel
+        EstadoLabel                     matlab.ui.control.Label
+        StatusLamp                      matlab.ui.control.Lamp
+        ConectarDesconectarButton       matlab.ui.control.Button
+        RefrescarPuertosButton          matlab.ui.control.Button
+        PuertosCOMdisponiblesDropDown   matlab.ui.control.DropDown
+        PuertosCOMdisponiblesDropDownLabel  matlab.ui.control.Label
+        PuertoCOMLabel                  matlab.ui.control.Label
+    end
+
+    
+    properties (Access = private)
+        s                   % Objeto serialport
+        conectado = false   % Estado de conexión
+        datosCapturados
+    
+        x                   % Señal original
+        y                   % Señal procesada
+        Fs = 1000           % Frecuencia de muestreo
+        N = 1000            % Número de muestras
+    
+        b = 1               % Coeficientes numerador del filtro
+        a = 1               % Coeficientes denominador del filtro
+    
+        filtroDisenado = false
+        tipoFiltroDisenado = ""
+        usarRadMuestra logical = false;
+        audioCargado= false; 
+    end
+    
+    methods (Access = private)
+        
+        function startupFcn(app)
+
+            % Configuración inicial de conexión
+            app.conectado = false;
+            app.EstadoLabel.Text = "Desconectado";
+            app.StatusLamp.Color = [1 0 0];
+        
+            % Configuración de toma de datos
+            app.NumerodemuestrasEditField.Limits = [100 5000];
+            app.NumerodemuestrasEditField.Value = 1000;
+            app.NumerodemuestrasEditField.RoundFractionalValues = "on";
+        
+            app.FsHzEditField.Limits = [100 5000];
+            app.FsHzEditField.Value = 1000;
+            app.FsHzEditField.RoundFractionalValues = "on";
+        
+            % Canal ADC usado por el potenciómetro
+            app.CanalADCDropDown.Items = {'A0 / PA0'};
+            app.CanalADCDropDown.ItemsData = {'A0'};
+            app.CanalADCDropDown.Value = 'A0';
+        
+            % Lambda del filtro IIR
+            app.LambdaEditField.Limits = [0 0.99];
+            app.LambdaEditField.Value = 0.90;
+        
+            % Valores internos
+            app.Fs = 1000;
+            app.N = 1000;
+            app.x = [];
+            app.y = [];
+            app.datosCapturados = [];
+        
+            app.b = 1;
+            app.a = 1;
+            app.filtroDisenado = false;
+            app.tipoFiltroDisenado = "";
+        
+            % Configuración inicial FIR
+            app.OrdenEditField_3.Limits = [2 200];
+            app.OrdenEditField_3.Value = 50;
+            app.OrdenEditField_3.RoundFractionalValues = "on";
+        
+            app.Fc1EditField.Limits = [1 app.Fs/2 - 1];
+            app.Fc1EditField.Value = 50;
+        
+            app.Fc2EditField.Limits = [1 app.Fs/2 - 1];
+            app.Fc2EditField.Value = 150;
+        
+            app.TipodeFiltroDropDown.Items = {'Low Pass', 'High Pass', 'Pass Band', 'Remove Band'};
+            app.TipodeFiltroDropDown.Value = 'Low Pass';
+        
+            app.FIRlistoLabel.Text = "FIR listo";
+                            
+        end
+
+        function graficarTiempo(app)
+
+            if isempty(app.x)
+                return;
+            end
+        
+            app.Fs = app.Fs;
+        
+            x0 = app.x - mean(app.x);
+        
+            % Forzar vector fila
+            x0 = x0(:).';
+        
+            app.N = length(x0);
+            t = (0:app.N-1)/app.Fs;
+        
+            disp(size(t))
+            disp(size(x0))
+        
+            plot(app.UIAxes, t, x0, "LineWidth",1.2);
+        
+            grid(app.UIAxes,"on");
+            title(app.UIAxes,"Señal original centrada");
+            xlabel(app.UIAxes,"Tiempo [s]");
+            ylabel(app.UIAxes,"Amplitud");
+        
+            xlim(app.UIAxes,[0 t(end)]);
+            yline(app.UIAxes,0,"k");
+        
+            ymin = min(x0);
+            ymax = max(x0);
+        
+            margen = 0.1*(ymax-ymin);
+        
+            if margen==0
+                margen=1;
+            end
+        
+            ylim(app.UIAxes,[ymin-margen ymax+margen]);
+        
+            if ~isempty(app.y)
+        
+                y0 = app.y - mean(app.y);
+        
+                % Forzar vector fila
+                y0 = y0(:).';
+        
+                Ny = length(y0);
+                ty = (0:Ny-1)/app.Fs;
+        
+                plot(app.UIAxes2,ty,y0,"LineWidth",1.2);
+        
+                grid(app.UIAxes2,"on");
+                title(app.UIAxes2,"Señal procesada centrada");
+                xlabel(app.UIAxes2,"Tiempo [s]");
+                ylabel(app.UIAxes2,"Amplitud");
+        
+                xlim(app.UIAxes2,[0 ty(end)]);
+                yline(app.UIAxes2,0,"k");
+        
+                ymin=min(y0);
+                ymax=max(y0);
+        
+                margen=0.1*(ymax-ymin);
+        
+                if margen==0
+                    margen=1;
+                end
+        
+                ylim(app.UIAxes2,[ymin-margen ymax+margen]);
+            end
+        
+        end
+        
+        function procesarConLambda(app)
+        
+            if isempty(app.x)
+                uialert(app.UIFigure, "No hay señal original para procesar.", "Sin datos");
+                return;
+            end
+        
+            lambda = app.LambdaEditField.Value;
+        
+            if lambda < 0 || lambda >= 1
+                uialert(app.UIFigure, "Lambda debe estar entre 0 y menor que 1.", "Valor inválido");
+                return;
+            end
+        
+            b = 1 - lambda;
+            a = [1 -lambda];
+        
+            app.y = filter(b, a, app.x);
+        
+            graficarTiempo(app);
+            actualizarFrecuencia(app);
+        
+        end
+        
+        
+        function [f, mag, fase] = espectroUnilateral(app, senal, Fs)
+        
+            senal = senal(:);
+            senal = senal - mean(senal);   % Quitar componente DC
+        
+            N = length(senal);
+        
+            Y = fft(senal);
+        
+            P2 = abs(Y/N);
+            mag = P2(1:floor(N/2)+1);
+        
+            if length(mag) > 2
+                mag(2:end-1) = 2*mag(2:end-1);
+            end
+        
+            faseCompleta = angle(Y);
+            fase = faseCompleta(1:floor(N/2)+1);
+        
+            f = Fs*(0:floor(N/2))/N;
+        
+        end
+            
+        function mostrarCoeficientes(app)
+
+            if isempty(app.b)
+                app.CoeficientesbEditField.Value = "";
+            else
+                app.CoeficientesbEditField.Value = mat2str(app.b, 6);
+            end
+        
+            if isempty(app.a)
+                app.CoeficientesaEditField_2.Value = "";
+            else
+                app.CoeficientesaEditField_2.Value = mat2str(app.a, 6);
+            end
+        
+        end
+
+        function graficarRespuestaFiltro(app)
+
+            if isempty(app.b) || isempty(app.a)
+                return;
+            end
+        
+            Fs = app.Fs;
+        
+            [h, w] = freqz(app.b, app.a, 1024);
+        
+            % ============================================================
+            % Selección del eje horizontal
+            % ============================================================
+            if app.radmuestraCheckBox.Value == true
+        
+                eje = w;
+                etiquetaX = "Frecuencia [rad/muestra]";
+                limiteX = pi;
+        
+            else
+        
+                eje = w*Fs/(2*pi);
+                etiquetaX = "Frecuencia [Hz]";
+                limiteX = Fs/2;
+        
+            end
+        
+            % ============================================================
+            % Magnitud normal o en dB
+            % ============================================================
+            magnitud = abs(h);
+        
+            if app.MostrardbCheckBox.Value == true
+        
+                magnitud = 20*log10(magnitud + eps);
+                etiquetaYMag = "Magnitud [dB]";
+        
+            else
+        
+                etiquetaYMag = "Magnitud";
+        
+            end
+        
+            % ============================================================
+            % Fase
+            % ============================================================
+            fase = rad2deg(unwrap(angle(h)));
+        
+            % ============================================================
+            % Respuesta en magnitud del filtro
+            % ============================================================
+            plot(app.UIAxes_4, eje, magnitud, "LineWidth", 1.2);
+            grid(app.UIAxes_4, "on");
+            title(app.UIAxes_4, "Respuesta en frecuencia - Magnitud");
+            xlabel(app.UIAxes_4, etiquetaX);
+            ylabel(app.UIAxes_4, etiquetaYMag);
+            xlim(app.UIAxes_4, [0 limiteX]);
+        
+            % ============================================================
+            % Respuesta en fase del filtro
+            % ============================================================
+            plot(app.UIAxes_5, eje, fase, "LineWidth", 1.2);
+            grid(app.UIAxes_5, "on");
+            title(app.UIAxes_5, "Respuesta en frecuencia - Fase");
+            xlabel(app.UIAxes_5, etiquetaX);
+            ylabel(app.UIAxes_5, "Fase [°]");
+            xlim(app.UIAxes_5, [0 limiteX]);
+        
+        end
+        function graficarAudio(app)
+
+            if isempty(app.x)
+                return;
+            end
+        
+            Fs = app.Fs;
+        
+            % ============================================================
+            % Audio original en tiempo
+            % UIAxes_6 = arriba izquierda
+            % ============================================================
+            x = app.x(:).';
+            N = length(x);
+            t = (0:N-1)/Fs;
+        
+            plot(app.UIAxes_6, t, x, "LineWidth", 1.0);
+            grid(app.UIAxes_6, "on");
+            title(app.UIAxes_6, "Audio original - Tiempo");
+            xlabel(app.UIAxes_6, "Tiempo [s]");
+            ylabel(app.UIAxes_6, "Amplitud");
+        
+            if ~isempty(t)
+                xlim(app.UIAxes_6, [0 t(end)]);
+            end
+        
+            % ============================================================
+            % Espectro audio original
+            % UIAxes_8 = abajo izquierda
+            % ============================================================
+            [f1, mag1, ~] = espectroUnilateral(app, x, Fs);
+        
+            plot(app.UIAxes_8, f1, mag1, "LineWidth", 1.0);
+            grid(app.UIAxes_8, "on");
+            title(app.UIAxes_8, "Espectro audio original");
+            xlabel(app.UIAxes_8, "Frecuencia [Hz]");
+            ylabel(app.UIAxes_8, "|X(f)|");
+            xlim(app.UIAxes_8, [0 Fs/2]);
+        
+            if max(mag1) > 0
+                ylim(app.UIAxes_8, [0 max(mag1)*1.1]);
+            end
+        
+            % ============================================================
+            % Audio procesado si existe
+            % UIAxes_7 = arriba derecha
+            % UIAxes_9 = abajo derecha
+            % ============================================================
+            if ~isempty(app.y)
+        
+                y = app.y(:).';
+                Ny = length(y);
+                ty = (0:Ny-1)/Fs;
+        
+                plot(app.UIAxes_7, ty, y, "LineWidth", 1.0);
+                grid(app.UIAxes_7, "on");
+                title(app.UIAxes_7, "Audio procesado - Tiempo");
+                xlabel(app.UIAxes_7, "Tiempo [s]");
+                ylabel(app.UIAxes_7, "Amplitud");
+        
+                if ~isempty(ty)
+                    xlim(app.UIAxes_7, [0 ty(end)]);
+                end
+        
+                [f2, mag2, ~] = espectroUnilateral(app, y, Fs);
+        
+                plot(app.UIAxes_9, f2, mag2, "LineWidth", 1.0);
+                grid(app.UIAxes_9, "on");
+                title(app.UIAxes_9, "Espectro audio procesado");
+                xlabel(app.UIAxes_9, "Frecuencia [Hz]");
+                ylabel(app.UIAxes_9, "|Y(f)|");
+                xlim(app.UIAxes_9, [0 Fs/2]);
+        
+                if max(mag2) > 0
+                    ylim(app.UIAxes_9, [0 max(mag2)*1.1]);
+                end
+        
+            else
+        
+                cla(app.UIAxes_7);
+                cla(app.UIAxes_9);
+        
+                title(app.UIAxes_7, "Audio procesado - Tiempo");
+                xlabel(app.UIAxes_7, "Tiempo [s]");
+                ylabel(app.UIAxes_7, "Amplitud");
+                grid(app.UIAxes_7, "on");
+        
+                title(app.UIAxes_9, "Espectro audio procesado");
+                xlabel(app.UIAxes_9, "Frecuencia [Hz]");
+                ylabel(app.UIAxes_9, "|Y(f)|");
+                grid(app.UIAxes_9, "on");
+        
+            end
+        
+        end
+
+
+        function actualizarFrecuencia(app)
+
+            if isempty(app.x)
+                return;
+            end
+        
+            if isempty(app.y)
+                return;
+            end
+        
+            Fs = app.Fs;
+        
+            [f1, mag1, ~] = espectroUnilateral(app, app.x, Fs);
+            [f2, mag2, ~] = espectroUnilateral(app, app.y, Fs);
+        
+            % ============================================================
+            % Selección de unidad del eje horizontal
+            % ============================================================
+            if app.radmuestraCheckBox.Value == true
+        
+                eje1 = 2*pi*f1/Fs;
+                eje2 = 2*pi*f2/Fs;
+        
+                etiquetaX = "Frecuencia [rad/muestra]";
+                limiteX = pi;
+        
+            else
+        
+                eje1 = f1;
+                eje2 = f2;
+        
+                etiquetaX = "Frecuencia [Hz]";
+                limiteX = Fs/2;
+        
+            end
+        
+            % ============================================================
+            % Magnitud original
+            % ============================================================
+            plot(app.UIAxes_2, eje1, mag1, "LineWidth", 1.2);
+            grid(app.UIAxes_2, "on");
+            title(app.UIAxes_2, "Magnitud - Original");
+            xlabel(app.UIAxes_2, etiquetaX);
+            ylabel(app.UIAxes_2, "|X(f)|");
+            xlim(app.UIAxes_2, [0 limiteX]);
+            ylim(app.UIAxes_2, [0 max(mag1)*1.1 + eps]);
+        
+            % ============================================================
+            % Magnitud procesada
+            % ============================================================
+            plot(app.UIAxes_3, eje2, mag2, "LineWidth", 1.2);
+            grid(app.UIAxes_3, "on");
+            title(app.UIAxes_3, "Magnitud - Procesada");
+            xlabel(app.UIAxes_3, etiquetaX);
+            ylabel(app.UIAxes_3, "|Y(f)|");
+            xlim(app.UIAxes_3, [0 limiteX]);
+            ylim(app.UIAxes_3, [0 max(mag2)*1.1 + eps]);
+        
+            % ============================================================
+            % Respuesta en frecuencia del filtro
+            % ============================================================
+            if app.filtroDisenado == true
+                graficarRespuestaFiltro(app);
+            end
+        
+        end
+
+    end
+       
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Button pushed function: ConectarDesconectarButton
+        function ConectarDesconectarButtonPushed(app, event)
+       
+            if app.conectado == false
+        
+                puerto = app.PuertosCOMdisponiblesDropDown.Value;
+        
+                try
+                    app.s = serialport(puerto, 115200);
+                    app.s.Timeout = 20;
+                    flush(app.s);
+        
+                    app.conectado = true;
+        
+                    app.EstadoLabel.Text = "Conectado";
+                    app.StatusLamp.Color = [0 1 0];
+                    app.ConectarDesconectarButton.Text = "Desconectar";
+        
+                catch ME
+                    app.conectado = false;
+        
+                    app.EstadoLabel.Text = "Error de conexión";
+                    app.StatusLamp.Color = [1 0 0];
+                    app.ConectarDesconectarButton.Text = "Conectar";
+        
+                    uialert(app.UIFigure, ME.message, "Error de conexión");
+                end
+        
+            else
+        
+                try
+                    if ~isempty(app.s)
+                        flush(app.s);
+                        delete(app.s);
+                        app.s = [];
+                    end
+                catch
+                    app.s = [];
+                end
+        
+                app.conectado = false;
+        
+                app.EstadoLabel.Text = "Desconectado";
+                app.StatusLamp.Color = [1 0 0];
+                app.ConectarDesconectarButton.Text = "Conectar";
+        
+            end
+        end
+
+        % Button pushed function: RefrescarPuertosButton
+        function RefrescarPuertosButtonPushed(app, event)
+
+            puertos = serialportlist("available");
+    
+            if ~isempty(puertos)
+    
+                app.PuertosCOMdisponiblesDropDown.Items = puertos;
+                app.PuertosCOMdisponiblesDropDown.Value = puertos(1);
+    
+                app.EstadoLabel.Text = "Puertos detectados";
+                app.StatusLamp.Color = [1 1 0];
+    
+            else
+    
+                app.PuertosCOMdisponiblesDropDown.Items = {};
+                app.EstadoLabel.Text = "Sin puertos";
+                app.StatusLamp.Color = [1 0 0];
+    
+            end
+        end
+
+        % Button pushed function: CapturadedatosButton
+        function CapturadedatosButtonPushed(app, event)
+     
+            if app.conectado == false
+                uialert(app.UIFigure, "Primero conecta la Nucleo.", "Error");
+                return;
+            end
+        
+            canal = app.CanalADCDropDown.Value;
+        
+            if canal ~= "A0"
+                uialert(app.UIFigure, "Por ahora solo está habilitado el canal A0 / PA0.", "Canal ADC no disponible");
+                return;
+            end
+        
+            % Número de muestras configurable desde la interfaz
+            N = round(app.NumerodemuestrasEditField.Value);
+            Fs = round(app.FsHzEditField.Value);
+        
+            if N < 100 || N > 1000
+                uialert(app.UIFigure, "El número de muestras debe estar entre 100 y 1000.", "N inválido");
+                return;
+            end
+        
+            if Fs < 100 || Fs > 5000
+                uialert(app.UIFigure, "Fs debe estar entre 100 y 5000 Hz.", "Fs inválida");
+                return;
+            end
+        
+            app.N = N;
+            app.Fs = Fs;
+            app.NumerodemuestrasEditField.Value = N;
+            app.FsHzEditField.Value = Fs;
+        
+            try
+                flush(app.s);
+        
+                % Enviar cantidad de muestras a la Nucleo
+                writeline(app.s, sprintf("N,%d", N));
+                respuestaN = strtrim(readline(app.s));
+        
+                if ~startsWith(respuestaN, "OK_N")
+                    uialert(app.UIFigure, ...
+                        "La Nucleo no aceptó el número de muestras. Respuesta: " + respuestaN, ...
+                        "Error N");
+                    return;
+                end
+        
+                % Solicitar captura
+                writeline(app.s, "C");
+        
+                linea = strtrim(readline(app.s));
+        
+                if linea ~= "OK_CAPTURA"
+                    uialert(app.UIFigure, "No se recibió OK_CAPTURA. Se recibió: " + linea, "Error");
+                    return;
+                end
+        
+                linea = strtrim(readline(app.s));
+        
+                while linea ~= "BEGIN"
+                    linea = strtrim(readline(app.s));
+                end
+        
+                x = zeros(1, N);
+        
+                for k = 1:N
+                    dato = strtrim(readline(app.s));
+                    x(k) = str2double(dato);
+                end
+        
+                fin = strtrim(readline(app.s));
+        
+                if fin ~= "END"
+                    uialert(app.UIFigure, "Captura incompleta. No se recibió END.", "Error");
+                    return;
+                end
+        
+                % Guardar datos en la app
+                app.x = x;
+                app.datosCapturados = x;
+        
+                graficarTiempo(app);
+                procesarConLambda(app);
+        
+                app.EstadoLabel.Text = "Captura completada: " + string(N) + " muestras";
+        
+            catch ME
+                uialert(app.UIFigure, ...
+                    "No hubo respuesta correcta de la Nucleo. Verifica que el firmware esté corriendo." + newline + ME.message, ...
+                    "Error de captura");
+        
+                app.EstadoLabel.Text = "Error en captura";
+            end
+        end
+
+        % Button pushed function: EnviarlambdaButton
+        function EnviarlambdaButtonPushed(app, event)
+        
+            if app.conectado == false
+                uialert(app.UIFigure, "Primero conecta la Nucleo.", "Error");
+                return;
+            end
+        
+            lambda = app.LambdaEditField.Value;
+        
+            if lambda < 0 || lambda >= 1
+                uialert(app.UIFigure, "Lambda debe estar entre 0 y menor que 1.", "Valor inválido");
+                return;
+            end
+        
+            try
+                comando = sprintf("L,%.2f", lambda);
+                flush(app.s);
+                writeline(app.s, comando);
+        
+                respuesta = strtrim(readline(app.s));
+        
+                app.EstadoLabel.Text = "Lambda enviada: " + string(lambda);
+
+                if ~isempty(app.x)
+                    procesarConLambda(app);
+            end
+
+            catch ME
+                uialert(app.UIFigure, ...
+                    "No se recibió respuesta de la Nucleo al enviar lambda." + newline + ME.message, ...
+                    "Error");
+        
+                app.EstadoLabel.Text = "Error al enviar lambda";
+            end
+        end
+
+        % Button pushed function: CargararchivomatButton
+        function CargararchivomatButtonPushed(app, event)
+
+        
+            [file, path] = uigetfile("*.mat", "Seleccionar archivo MAT");
+        
+            if isequal(file, 0)
+                return;
+            end
+        
+            datos = load(fullfile(path, file));
+        
+            if isfield(datos, "x")
+                x = datos.x;
+            else
+                uialert(app.UIFigure, "El archivo MAT debe contener una variable llamada x.", "Error");
+                return;
+            end
+        
+            if isfield(datos, "Fs")
+                Fs = datos.Fs;
+            else
+                Fs = app.FsHzEditField.Value;
+            end
+        
+            x = x(:).';
+        
+            app.x = x;
+            app.datosCapturados = x;
+            app.Fs = Fs;
+            app.N = length(x);
+            
+            disp(size(app.x))
+            disp(app.N)
+            disp(app.Fs)
+            graficarTiempo(app);
+            procesarConLambda(app);
+        
+            app.EstadoLabel.Text = "Archivo MAT cargado";
+        end
+
+        % Button pushed function: AjustarGraficaButton
+        function AjustarGraficaButtonPushed(app, event)
+        
+            if isempty(app.x)
+                uialert(app.UIFigure, "No hay señal cargada o capturada para ajustar.", "Sin datos");
+                return;
+            end
+        
+            % Obtener datos actuales
+            x = app.x;
+            N = length(x);
+            Fs = app.Fs;
+        
+            % Vector de tiempo
+            t = (0:N-1)/Fs;
+        
+            % Volver a graficar la señal completa
+            plot(app.UIAxes, t, x, "LineWidth", 1.2);
+            grid(app.UIAxes, "on");
+        
+            title(app.UIAxes, "Señal ajustada");
+            xlabel(app.UIAxes, "Tiempo [s]");
+            ylabel(app.UIAxes, "Amplitud");
+        
+            % Ajustar límites automáticamente
+            xlim(app.UIAxes, [t(1) t(end)]);
+        
+            ymin = min(x);
+            ymax = max(x);
+        
+            % Margen vertical para que la señal no quede pegada al borde
+            margen = 0.1 * (ymax - ymin);
+        
+            if margen == 0
+                margen = 1;
+            end
+        
+            ylim(app.UIAxes, [ymin - margen, ymax + margen]);
+        
+            app.EstadoLabel.Text = "Gráfica ajustada";
+        end
+
+        % Button pushed function: AplicarFiltroButton
+        function AplicarFiltroButtonPushed(app, event)
+     
+            if isempty(app.x)
+                uialert(app.UIFigure, "Primero carga o captura una señal.", "Sin señal");
+                return;
+            end
+        
+            if app.filtroDisenado == false
+                uialert(app.UIFigure, "Primero diseña un filtro FIR o IIR.", "Sin filtro");
+                return;
+            end
+        
+            app.y = filter(app.b, app.a, app.x);
+
+            graficarTiempo(app);
+            actualizarFrecuencia(app);
+            
+            if app.audioCargado == true
+                graficarAudio(app);
+            end
+            
+            app.EstadoLabel.Text = "Filtro aplicado en MATLAB";
+        
+        end
+
+        % Button pushed function: DisearFIRButton
+        function DisearFIRButtonPushed(app, event)
+
+            Fs = app.Fs;
+            orden = round(app.OrdenEditField_3.Value);
+            Fc1 = app.Fc1EditField.Value;
+            Fc2 = app.Fc2EditField.Value;
+            tipo = app.TipodeFiltroDropDown.Value;
+        
+            Fn = Fs/2;   % Frecuencia de Nyquist
+        
+            % Validar orden
+            if orden < 2
+                uialert(app.UIFigure, "El orden del filtro FIR debe ser mayor o igual a 2.", "Orden inválido");
+                return;
+            end
+        
+            % Validar Fc1
+            if Fc1 <= 0 || Fc1 >= Fn
+                uialert(app.UIFigure, "Fc1 debe estar entre 0 y Fs/2.", "Frecuencia inválida");
+                return;
+            end
+        
+            try
+                switch tipo
+        
+                    case "Low Pass"
+        
+                        Wn = Fc1/Fn;
+                        app.b = fir1(orden, Wn, "low");
+                        app.a = 1;
+        
+                    case "High Pass"
+        
+                        Wn = Fc1/Fn;
+                        app.b = fir1(orden, Wn, "high");
+                        app.a = 1;
+        
+                    case "Pass Band"
+        
+                        if Fc2 <= Fc1 || Fc2 >= Fn
+                            uialert(app.UIFigure, ...
+                                "Para Pass Band debe cumplirse: 0 < Fc1 < Fc2 < Fs/2.", ...
+                                "Frecuencias inválidas");
+                            return;
+                        end
+        
+                        Wn = [Fc1 Fc2]/Fn;
+                        app.b = fir1(orden, Wn, "bandpass");
+                        app.a = 1;
+        
+                    case "Remove Band"
+        
+                        if Fc2 <= Fc1 || Fc2 >= Fn
+                            uialert(app.UIFigure, ...
+                                "Para Remove Band debe cumplirse: 0 < Fc1 < Fc2 < Fs/2.", ...
+                                "Frecuencias inválidas");
+                            return;
+                        end
+        
+                        Wn = [Fc1 Fc2]/Fn;
+                        app.b = fir1(orden, Wn, "stop");
+                        app.a = 1;
+                end
+        
+                app.filtroDisenado = true;
+                app.tipoFiltroDisenado = "FIR";
+        
+                mostrarCoeficientes(app);
+                graficarRespuestaFiltro(app);
+        
+                app.FIRlistoLabel.Text = "FIR diseñado";
+                app.EstadoLabel.Text = "Filtro FIR diseñado";
+        
+            catch ME
+        
+                uialert(app.UIFigure, ...
+                    "No se pudo diseñar el filtro FIR." + newline + ME.message, ...
+                    "Error FIR");
+        
+                app.FIRlistoLabel.Text = "Error FIR";
+                app.EstadoLabel.Text = "Error al diseñar FIR";
+            end
+        end
+
+        % Button pushed function: DisearIIRButton
+        function DisearIIRButtonPushed(app, event)
+
+
+            Fs = app.Fs;
+            orden = round(app.OrdenEditField_2.Value);
+            Fc = app.FcEditField.Value;
+            ripple = app.RippleEditField.Value;
+            atenuacion = app.AtenuacinEditField.Value;
+            tipo = app.TipoFiltroDropDown_2.Value;
+        
+            Fn = Fs/2;   % Frecuencia de Nyquist
+        
+            if orden < 1 || orden > 10
+                uialert(app.UIFigure, "El orden del filtro IIR debe estar entre 1 y 10.", "Orden inválido");
+                return;
+            end
+        
+            if Fc <= 0 || Fc >= Fn
+                uialert(app.UIFigure, "Fc debe estar entre 0 y Fs/2.", "Frecuencia inválida");
+                return;
+            end
+        
+            if ripple <= 0
+                uialert(app.UIFigure, "El ripple debe ser mayor que 0 dB.", "Ripple inválido");
+                return;
+            end
+        
+            if atenuacion <= 0
+                uialert(app.UIFigure, "La atenuación debe ser mayor que 0 dB.", "Atenuación inválida");
+                return;
+            end
+        
+            try
+                Wn = Fc/Fn;
+        
+                switch tipo
+        
+                    case "Butterworth"
+                        [app.b, app.a] = butter(orden, Wn, "low");
+        
+                    case "Chebyshev I"
+                        [app.b, app.a] = cheby1(orden, ripple, Wn, "low");
+        
+                    case "Chebyshev II"
+                        [app.b, app.a] = cheby2(orden, atenuacion, Wn, "low");
+        
+                    case "Elliptic"
+                        [app.b, app.a] = ellip(orden, ripple, atenuacion, Wn, "low");
+                    
+                    case "Bessel"
+                    
+                        % Para Bessel se diseña primero un filtro analógico
+                        % y luego se convierte a digital con transformación bilineal.
+                    
+                        Wc = 2*pi*Fc;                 % Frecuencia de corte analógica en rad/s
+                    
+                        [ba, aa] = besself(orden, Wc); % Filtro Bessel analógico
+                    
+                        [app.b, app.a] = bilinear(ba, aa, Fs); % Conversión a filtro digital
+                end
+        
+                app.filtroDisenado = true;
+                app.tipoFiltroDisenado = "IIR";
+        
+                mostrarCoeficientes(app);
+                graficarRespuestaFiltro(app);
+        
+                app.IIRlistoLabel.Text = "IIR diseñado";
+                app.EstadoLabel.Text = "Filtro IIR diseñado";
+                        
+            catch ME
+        
+                uialert(app.UIFigure, ...
+                    "No se pudo diseñar el filtro IIR." + newline + ME.message, ...
+                    "Error IIR");
+        
+               app.IIRlistoLabel.Text = "Error IIR";
+               app.EstadoLabel.Text = "Error al diseñar IIR";
+        
+            end
+        end
+
+        % Button pushed function: EnviarCoeficientesButton
+        function EnviarCoeficientesButtonPushed(app, event)
+        
+            if app.conectado == false
+                uialert(app.UIFigure, "Primero conecta la Nucleo.", "Error");
+                return;
+            end
+        
+            if app.filtroDisenado == false
+                uialert(app.UIFigure, "Primero diseña un filtro IIR.", "Sin filtro");
+                return;
+            end
+        
+            try
+                flush(app.s);
+        
+                b = app.b(:).';
+                a = app.a(:).';
+        
+                Nb = length(b);
+                Na = length(a);
+        
+                % ======================================================
+                % Enviar número de coeficientes b
+                % ======================================================
+                writeline(app.s, sprintf("NB,%d", Nb));
+                resp = strtrim(readline(app.s));
+        
+                if resp ~= "OK_NB"
+                    uialert(app.UIFigure, "La Nucleo no aceptó NB. Respuesta: " + resp, "Error");
+                    return;
+                end
+        
+                % ======================================================
+                % Enviar coeficientes b
+                % IMPORTANTE: la STM32 espera índices desde 1
+                % ======================================================
+                for k = 1:Nb
+        
+                    writeline(app.s, sprintf("B,%d,%.10f", k, b(k)));
+                    resp = strtrim(readline(app.s));
+        
+                    if resp ~= "OK_B"
+                        uialert(app.UIFigure, ...
+                            "Error enviando B(" + string(k) + "). Respuesta: " + resp, ...
+                            "Error");
+                        return;
+                    end
+        
+                end
+        
+                % ======================================================
+                % Enviar número de coeficientes a
+                % ======================================================
+                writeline(app.s, sprintf("NA,%d", Na));
+                resp = strtrim(readline(app.s));
+        
+                if resp ~= "OK_NA"
+                    uialert(app.UIFigure, "La Nucleo no aceptó NA. Respuesta: " + resp, "Error");
+                    return;
+                end
+        
+                % ======================================================
+                % Enviar coeficientes a
+                % IMPORTANTE: la STM32 espera índices desde 1
+                % ======================================================
+                for k = 1:Na
+        
+                    writeline(app.s, sprintf("A,%d,%.10f", k, a(k)));
+                    resp = strtrim(readline(app.s));
+        
+                    if resp ~= "OK_A"
+                        uialert(app.UIFigure, ...
+                            "Error enviando A(" + string(k) + "). Respuesta: " + resp, ...
+                            "Error");
+                        return;
+                    end
+        
+                end
+        
+               % Confirmar fin de coeficientes
+                writeline(app.s, "END_COEF");
+                resp = strtrim(readline(app.s));
+                
+                if resp == "OK_COEF"
+                    app.EstadoLabel.Text = "Coeficientes IIR cargados en Nucleo";
+                else
+                    app.EstadoLabel.Text = "Error coeficientes";
+                end
+        
+            catch ME
+        
+                uialert(app.UIFigure, ...
+                    "No se pudieron enviar los coeficientes." + newline + ME.message, ...
+                    "Error UART");
+        
+                app.EstadoLabel.Text = "Error al enviar coeficientes";
+        
+            end
+        end
+
+        % Value changed function: radmuestraCheckBox
+        function radmuestraCheckBoxValueChanged(app, event)
+           % Value changed function: radmuestraCheckBox
+            if app.radmuestraCheckBox.Value == true
+                app.MostrarHzCheckBox.Value = false;
+            else
+                app.MostrarHzCheckBox.Value = true;
+            end
+        
+            actualizarFrecuencia(app);
+        end
+
+        % Value changed function: MostrarHzCheckBox
+        function MostrarHzCheckBoxValueChanged(app, event)
+            value = app.MostrarHzCheckBox.Value;
+            if app.MostrarHzCheckBox.Value == true
+                app.radmuestraCheckBox.Value = false;
+            else
+                app.radmuestraCheckBox.Value = true;
+            end
+        
+            actualizarFrecuencia(app);
+        end
+
+        % Value changed function: MostrardbCheckBox
+        function MostrardbCheckBoxValueChanged(app, event)
+            value = app.MostrardbCheckBox.Value;
+            actualizarFrecuencia(app);
+        end
+
+        % Button pushed function: AplicarEfectoButton
+        function AplicarEfectoButtonPushed(app, event)
+
+            if isempty(app.x)
+                uialert(app.UIFigure, "Primero carga o captura una señal.", "Sin señal");
+                return;
+            end
+        
+            efecto = app.EfectoDropDown.Value;
+        
+            Fs = app.Fs;
+            x = app.x(:).';      % Asegurar vector fila
+            N = length(x);
+        
+            tiempoDelay = app.TiempoDelayEditField.Value;
+            ganancia = app.GananciaEditField.Value;
+            nivelDist = app.NiveldedistorsinEditField.Value;
+        
+            try
+                switch efecto
+        
+                    case "Ganancia"
+        
+                        % Multiplica la señal por una ganancia
+                        app.y = ganancia * x;
+        
+                        app.EstadoLabel.Text = "Efecto Ganancia aplicado";
+        
+                    case "Delay"
+        
+                        % Retardo puro de la señal
+                        muestrasDelay = round(tiempoDelay * Fs);
+        
+                        if muestrasDelay <= 0
+                            uialert(app.UIFigure, "El tiempo de delay debe ser mayor que 0.", "Delay inválido");
+                            return;
+                        end
+        
+                        if muestrasDelay >= N
+                            uialert(app.UIFigure, "El delay es demasiado grande para la longitud de la señal.", "Delay inválido");
+                            return;
+                        end
+        
+                        app.y = [zeros(1, muestrasDelay), x(1:end-muestrasDelay)];
+        
+                        app.EstadoLabel.Text = "Efecto Delay aplicado";
+        
+                    case "Eco"
+        
+                        % Eco = señal original + copia retardada atenuada
+                        muestrasDelay = round(tiempoDelay * Fs);
+        
+                        if muestrasDelay <= 0
+                            uialert(app.UIFigure, "El tiempo de eco debe ser mayor que 0.", "Eco inválido");
+                            return;
+                        end
+        
+                        if muestrasDelay >= N
+                            uialert(app.UIFigure, "El delay del eco es demasiado grande para la señal.", "Eco inválido");
+                            return;
+                        end
+        
+                        eco = [zeros(1, muestrasDelay), x(1:end-muestrasDelay)];
+        
+                        app.y = x + ganancia * eco;
+        
+                        % Normalización para evitar que la señal crezca demasiado
+                        maxOriginal = max(abs(x - mean(x)));
+                        maxProcesada = max(abs(app.y - mean(app.y)));
+        
+                        if maxProcesada > 0 && maxOriginal > 0
+                            app.y = (app.y - mean(app.y)) * (maxOriginal / maxProcesada) + mean(x);
+                        end
+        
+                        app.EstadoLabel.Text = "Efecto Eco aplicado";
+        
+                    case "Distorsión"
+        
+                        % Distorsión tipo saturación suave usando tanh()
+                        x0 = x - mean(x);
+        
+                        maxAbs = max(abs(x0));
+        
+                        if maxAbs == 0
+                            uialert(app.UIFigure, "La señal es constante; no se puede distorsionar adecuadamente.", "Señal inválida");
+                            return;
+                        end
+        
+                        xNorm = x0 / maxAbs;
+        
+                        if nivelDist <= 0
+                            nivelDist = 1;
+                        end
+        
+                        yNorm = tanh(nivelDist * xNorm);
+        
+                        % Reescalar a amplitud similar a la original
+                        app.y = yNorm * maxAbs + mean(x);
+        
+                        app.EstadoLabel.Text = "Efecto Distorsión aplicado";
+        
+                end
+        
+                % Graficar señal original/procesada en tiempo
+                graficarTiempo(app);
+                
+                % Actualizar frecuencia
+                actualizarFrecuencia(app);
+                
+                % Si la señal cargada es audio, actualizar también la pestaña Audio
+                if app.audioCargado == true
+                    graficarAudio(app);
+                end
+        
+                % Actualizar frecuencia
+                actualizarFrecuencia(app);
+        
+            catch ME
+        
+                uialert(app.UIFigure, ...
+                    "No se pudo aplicar el efecto." + newline + ME.message, ...
+                    "Error de efecto");
+        
+                app.EstadoLabel.Text = "Error al aplicar efecto";
+        
+            end
+        end
+
+        % Button pushed function: GuardarCSVButton
+        function GuardarCSVButtonPushed(app, event)
+
+            if isempty(app.x)
+                uialert(app.UIFigure, "No hay señal original para guardar.", "Sin datos");
+                return;
+            end
+        
+            % Seleccionar nombre y ubicación
+            [file, path] = uiputfile("*.csv", "Guardar datos como CSV");
+        
+            if isequal(file, 0)
+                return;
+            end
+        
+            archivo = fullfile(path, file);
+        
+            x = app.x(:);
+            Fs = app.Fs;
+        
+            % Si no hay señal procesada, se guarda como NaN
+            if isempty(app.y)
+                y = NaN(size(x));
+            else
+                y = app.y(:);
+            end
+        
+            % Igualar longitudes por seguridad
+            L = max(length(x), length(y));
+        
+            x_pad = NaN(L, 1);
+            y_pad = NaN(L, 1);
+        
+            x_pad(1:length(x)) = x;
+            y_pad(1:length(y)) = y;
+        
+            n = (0:L-1).';
+            t = n/Fs;
+        
+            tabla = table(n, t, x_pad, y_pad, ...
+                'VariableNames', {'Muestra', 'Tiempo_s', 'Original', 'Procesada'});
+        
+            try
+                writetable(tabla, archivo);
+        
+                app.EstadoLabel.Text = "CSV guardado";
+        
+            catch ME
+                uialert(app.UIFigure, ...
+                    "No se pudo guardar el archivo CSV." + newline + ME.message, ...
+                    "Error CSV");
+        
+                app.EstadoLabel.Text = "Error al guardar CSV";
+            end
+        end
+
+        % Button pushed function: GuardarMATButton
+        function GuardarMATButtonPushed(app, event)
+
+            if isempty(app.x)
+                uialert(app.UIFigure, "No hay señal original para guardar.", "Sin datos");
+                return;
+            end
+        
+            [file, path] = uiputfile("*.mat", "Guardar variables como MAT");
+        
+            if isequal(file, 0)
+                return;
+            end
+        
+            archivo = fullfile(path, file);
+        
+            % Señales principales
+            x = app.x;
+            y = app.y;
+            Fs = app.Fs;
+            N = length(app.x);
+        
+            % Coeficientes del filtro actual
+            b = app.b;
+            a = app.a;
+        
+            % Estado del filtro
+            filtroDisenado = app.filtroDisenado;
+        
+            if isprop(app, "filtroActual")
+                filtroActual = app.filtroActual;
+            else
+                filtroActual = "";
+            end
+        
+            % Parámetros generales
+            lambda = app.LambdaEditField.Value;
+        
+            % Parámetros FIR
+            FIR_tipo = app.TipodeFiltroDropDown.Value;
+            FIR_orden = app.OrdenEditField_3.Value;
+            FIR_Fc1 = app.Fc1EditField.Value;
+            FIR_Fc2 = app.Fc2EditField.Value;
+        
+            % Parámetros IIR
+            IIR_tipo = app.TipoFiltroDropDown_2.Value;
+            IIR_orden = app.OrdenEditField_2.Value;
+            IIR_Fc = app.FcEditField.Value;
+            IIR_ripple = app.RippleEditField.Value;
+            IIR_atenuacion = app.AtenuacinEditField.Value;
+        
+            % Parámetros de efectos
+            efecto_tipo = app.EfectoDropDown.Value;
+            efecto_delay = app.TiempoDelayEditField.Value;
+            efecto_ganancia = app.GananciaEditField.Value;
+            efecto_distorsion = app.NiveldedistorsinEditField.Value;
+        
+            try
+                save(archivo, ...
+                    "x", "y", "Fs", "N", ...
+                    "b", "a", ...
+                    "filtroDisenado", "filtroActual", ...
+                    "lambda", ...
+                    "FIR_tipo", "FIR_orden", "FIR_Fc1", "FIR_Fc2", ...
+                    "IIR_tipo", "IIR_orden", "IIR_Fc", "IIR_ripple", "IIR_atenuacion", ...
+                    "efecto_tipo", "efecto_delay", "efecto_ganancia", "efecto_distorsion");
+        
+                app.EstadoLabel.Text = "MAT guardado";
+        
+            catch ME
+                uialert(app.UIFigure, ...
+                    "No se pudo guardar el archivo MAT." + newline + ME.message, ...
+                    "Error MAT");
+        
+                app.EstadoLabel.Text = "Error al guardar MAT";
+            end
+        end
+
+        % Value changed function: NumerodemuestrasEditField
+        function NumerodemuestrasEditFieldValueChanged(app, event)
+            value = app.NumerodemuestrasEditField.Value;
+            N = round(app.NumerodemuestrasEditField.Value);
+        
+            if N < 100
+                N = 100;
+            elseif N > 1000
+                N = 1000;
+            end
+        
+            app.N = N;
+            app.NumerodemuestrasEditField.Value = N;
+        
+            app.EstadoLabel.Text = "Número de muestras: " + string(N);
+        end
+
+        % Value changed function: FsHzEditField
+        function FsHzEditFieldValueChanged(app, event)
+            value = app.FsHzEditField.Value;
+        
+            Fs = round(app.FsHzEditField.Value);
+        
+            if Fs < 100
+                Fs = 100;
+            elseif Fs > 5000
+                Fs = 5000;
+            end
+        
+            app.Fs = Fs;
+            app.FsHzEditField.Value = Fs;
+        
+            app.EstadoLabel.Text = "Fs actualizado: " + string(Fs) + " Hz";
+        
+            % Si ya hay señal cargada/procesada, actualizar gráficas
+            if ~isempty(app.x)
+                graficarTiempo(app);
+            end
+        
+            if ~isempty(app.x) && ~isempty(app.y)
+                actualizarFrecuencia(app);
+            end
+        end
+
+        % Button pushed function: CargararchivosvariosButton
+        function CargararchivosvariosButtonPushed(app, event)
+        
+            [file, path] = uigetfile( ...
+                {"*.mat;*.csv;*.txt;*.wav;*.mp3", "Archivos compatibles (*.mat, *.csv, *.txt, *.wav, *.mp3)"; ...
+                 "*.mat", "Archivo MAT (*.mat)"; ...
+                 "*.csv", "Archivo CSV (*.csv)"; ...
+                 "*.txt", "Archivo TXT (*.txt)"; ...
+                 "*.wav;*.mp3", "Audio (*.wav, *.mp3)"}, ...
+                 "Seleccionar archivo");
+        
+            if isequal(file, 0)
+                return;
+            end
+        
+            archivo = fullfile(path, file);
+            [~, ~, ext] = fileparts(archivo);
+        
+            try
+        
+                switch lower(ext)
+        
+                    case ".mat"
+        
+                        datos = load(archivo);
+        
+                        if isfield(datos, "x")
+                            x = datos.x;
+                        else
+                            uialert(app.UIFigure, "El archivo MAT debe contener una variable llamada x.", "Error MAT");
+                            return;
+                        end
+        
+                        if isfield(datos, "Fs")
+                            Fs = datos.Fs;
+                        else
+                            Fs = app.FsHzEditField.Value;
+                        end
+        
+                        app.audioCargado = false;
+        
+                    case ".csv"
+        
+                        tabla = readtable(archivo);
+        
+                        if any(strcmpi(tabla.Properties.VariableNames, "x"))
+                            idx = find(strcmpi(tabla.Properties.VariableNames, "x"), 1);
+                            x = tabla{:, idx};
+        
+                        elseif any(strcmpi(tabla.Properties.VariableNames, "Original"))
+                            idx = find(strcmpi(tabla.Properties.VariableNames, "Original"), 1);
+                            x = tabla{:, idx};
+        
+                        else
+                            x = [];
+        
+                            for k = 1:width(tabla)
+                                columna = tabla{:, k};
+        
+                                if isnumeric(columna)
+                                    x = columna;
+                                    break;
+                                end
+                            end
+        
+                            if isempty(x)
+                                uialert(app.UIFigure, "No se encontró una columna numérica válida en el CSV.", "Error CSV");
+                                return;
+                            end
+                        end
+        
+                        Fs = app.FsHzEditField.Value;
+                        app.audioCargado = false;
+        
+                    case ".txt"
+        
+                        datos_txt = readmatrix(archivo);
+        
+                        if isempty(datos_txt)
+                            uialert(app.UIFigure, "El archivo TXT no contiene datos numéricos válidos.", "Error TXT");
+                            return;
+                        end
+        
+                        x = datos_txt(:, 1);
+                        Fs = app.FsHzEditField.Value;
+                        app.audioCargado = false;
+        
+                    case {".wav", ".mp3"}
+        
+                        [x, Fs] = audioread(archivo);
+        
+                        % Si el audio viene estéreo, se convierte a mono
+                        if size(x, 2) > 1
+                            x = mean(x, 2);
+                        end
+        
+                        app.audioCargado = true;
+        
+                    otherwise
+        
+                        uialert(app.UIFigure, "Formato no compatible.", "Error");
+                        return;
+        
+                end
+        
+                % Guardar señal en la app
+                x = x(:).';
+        
+                app.x = x;
+                app.y = [];
+                app.Fs = round(Fs);
+                app.N = length(x);
+                app.datosCapturados = x;
+        
+                app.FsHzEditField.Value = app.Fs;
+        
+                if app.N <= 1000
+                    app.NumerodemuestrasEditField.Value = app.N;
+                else
+                    app.NumerodemuestrasEditField.Value = 1000;
+                end
+        
+                % Graficar en pestañas generales
+                graficarTiempo(app);
+        
+                % Graficar en pestaña Audio
+                graficarAudio(app);
+        
+                app.EstadoLabel.Text = "Archivo cargado: " + string(ext);
+        
+            catch ME
+        
+                uialert(app.UIFigure, ...
+                    "No se pudo cargar el archivo." + newline + ME.message, ...
+                    "Error de carga");
+        
+                app.EstadoLabel.Text = "Error al cargar archivo";
+        
+            end
+        
+        
+        end
+
+        % Button pushed function: AudiooriginalButton
+        function AudiooriginalButtonPushed(app, event)
+        
+            if isempty(app.x)
+                uialert(app.UIFigure, "No hay señal original para reproducir.", "Sin audio");
+                return;
+            end
+        
+            x = app.x(:);
+            x = x - mean(x);
+        
+            maxAbs = max(abs(x));
+        
+            if maxAbs > 0
+                x = x / maxAbs;
+            end
+        
+            soundsc(x, app.Fs);
+        
+            app.EstadoLabel.Text = "Reproduciendo audio original";
+        end
+
+        % Button pushed function: AudioProcesadoButton
+        function AudioProcesadoButtonPushed(app, event)
+        
+            if isempty(app.y)
+                uialert(app.UIFigure, "No hay señal procesada para reproducir.", "Sin audio procesado");
+                return;
+            end
+        
+            y = app.y(:);
+            y = y - mean(y);
+        
+            maxAbs = max(abs(y));
+        
+            if maxAbs > 0
+                y = y / maxAbs;
+            end
+        
+            soundsc(y, app.Fs);
+        
+            app.EstadoLabel.Text = "Reproduciendo audio procesado";
+        
+        end
+
+        % Button pushed function: DetenerAudioButton
+        function DetenerAudioButtonPushed(app, event)
+
+            clear sound;
+        
+            app.EstadoLabel.Text = "Audio detenido";
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Position = [100 100 1452 720];
+            app.UIFigure.Name = 'MATLAB App';
+
+            % Create ConexinPanel
+            app.ConexinPanel = uipanel(app.UIFigure);
+            app.ConexinPanel.Title = 'Conexión';
+            app.ConexinPanel.Position = [47 486 285 162];
+
+            % Create PuertoCOMLabel
+            app.PuertoCOMLabel = uilabel(app.ConexinPanel);
+            app.PuertoCOMLabel.Position = [17 109 72 22];
+            app.PuertoCOMLabel.Text = 'Puerto COM';
+
+            % Create PuertosCOMdisponiblesDropDownLabel
+            app.PuertosCOMdisponiblesDropDownLabel = uilabel(app.ConexinPanel);
+            app.PuertosCOMdisponiblesDropDownLabel.HorizontalAlignment = 'right';
+            app.PuertosCOMdisponiblesDropDownLabel.Position = [14 80 144 22];
+            app.PuertosCOMdisponiblesDropDownLabel.Text = 'Puertos COM disponibles ';
+
+            % Create PuertosCOMdisponiblesDropDown
+            app.PuertosCOMdisponiblesDropDown = uidropdown(app.ConexinPanel);
+            app.PuertosCOMdisponiblesDropDown.Items = {'Puerto?'};
+            app.PuertosCOMdisponiblesDropDown.Position = [173 80 100 22];
+            app.PuertosCOMdisponiblesDropDown.Value = 'Puerto?';
+
+            % Create RefrescarPuertosButton
+            app.RefrescarPuertosButton = uibutton(app.ConexinPanel, 'push');
+            app.RefrescarPuertosButton.ButtonPushedFcn = createCallbackFcn(app, @RefrescarPuertosButtonPushed, true);
+            app.RefrescarPuertosButton.Position = [14 46 112 23];
+            app.RefrescarPuertosButton.Text = 'Refrescar Puertos';
+
+            % Create ConectarDesconectarButton
+            app.ConectarDesconectarButton = uibutton(app.ConexinPanel, 'push');
+            app.ConectarDesconectarButton.ButtonPushedFcn = createCallbackFcn(app, @ConectarDesconectarButtonPushed, true);
+            app.ConectarDesconectarButton.Position = [140 46 134 23];
+            app.ConectarDesconectarButton.Text = 'Conectar/Desconectar';
+
+            % Create StatusLamp
+            app.StatusLamp = uilamp(app.ConexinPanel);
+            app.StatusLamp.Position = [173 12 20 20];
+
+            % Create EstadoLabel
+            app.EstadoLabel = uilabel(app.ConexinPanel);
+            app.EstadoLabel.Position = [54 12 107 22];
+            app.EstadoLabel.Text = 'Estado';
+
+            % Create ControlesLabel
+            app.ControlesLabel = uilabel(app.UIFigure);
+            app.ControlesLabel.FontSize = 36;
+            app.ControlesLabel.Position = [260 662 159 47];
+            app.ControlesLabel.Text = 'Controles';
+
+            % Create SealesLabel
+            app.SealesLabel = uilabel(app.UIFigure);
+            app.SealesLabel.FontSize = 36;
+            app.SealesLabel.Position = [844 662 135 47];
+            app.SealesLabel.Text = 'Señales';
+
+            % Create TomadedatosPanel
+            app.TomadedatosPanel = uipanel(app.UIFigure);
+            app.TomadedatosPanel.Title = 'Toma de datos';
+            app.TomadedatosPanel.Position = [48 275 285 199];
+
+            % Create NumerodemuestrasEditFieldLabel
+            app.NumerodemuestrasEditFieldLabel = uilabel(app.TomadedatosPanel);
+            app.NumerodemuestrasEditFieldLabel.HorizontalAlignment = 'right';
+            app.NumerodemuestrasEditFieldLabel.Position = [14 143 117 22];
+            app.NumerodemuestrasEditFieldLabel.Text = 'Numero de muestras';
+
+            % Create NumerodemuestrasEditField
+            app.NumerodemuestrasEditField = uieditfield(app.TomadedatosPanel, 'numeric');
+            app.NumerodemuestrasEditField.Limits = [100 1000];
+            app.NumerodemuestrasEditField.RoundFractionalValues = 'on';
+            app.NumerodemuestrasEditField.ValueChangedFcn = createCallbackFcn(app, @NumerodemuestrasEditFieldValueChanged, true);
+            app.NumerodemuestrasEditField.Position = [146 143 100 22];
+            app.NumerodemuestrasEditField.Value = 1000;
+
+            % Create FsHzEditFieldLabel
+            app.FsHzEditFieldLabel = uilabel(app.TomadedatosPanel);
+            app.FsHzEditFieldLabel.HorizontalAlignment = 'right';
+            app.FsHzEditFieldLabel.Position = [14 109 44 22];
+            app.FsHzEditFieldLabel.Text = 'Fs (Hz)';
+
+            % Create FsHzEditField
+            app.FsHzEditField = uieditfield(app.TomadedatosPanel, 'numeric');
+            app.FsHzEditField.Limits = [100 5000];
+            app.FsHzEditField.RoundFractionalValues = 'on';
+            app.FsHzEditField.ValueChangedFcn = createCallbackFcn(app, @FsHzEditFieldValueChanged, true);
+            app.FsHzEditField.Position = [67 109 56 22];
+            app.FsHzEditField.Value = 1000;
+
+            % Create CanalADCDropDownLabel
+            app.CanalADCDropDownLabel = uilabel(app.TomadedatosPanel);
+            app.CanalADCDropDownLabel.HorizontalAlignment = 'right';
+            app.CanalADCDropDownLabel.Position = [28 69 64 22];
+            app.CanalADCDropDownLabel.Text = 'Canal ADC';
+
+            % Create CanalADCDropDown
+            app.CanalADCDropDown = uidropdown(app.TomadedatosPanel);
+            app.CanalADCDropDown.Items = {'A0', 'A1 / PA1', 'A4 / PA4 DAC', 'A6', 'A7'};
+            app.CanalADCDropDown.ItemsData = {'A0', 'A1', 'A4', 'A6', 'A7'};
+            app.CanalADCDropDown.Position = [107 69 100 22];
+            app.CanalADCDropDown.Value = 'A0';
+
+            % Create CapturadedatosButton
+            app.CapturadedatosButton = uibutton(app.TomadedatosPanel, 'push');
+            app.CapturadedatosButton.ButtonPushedFcn = createCallbackFcn(app, @CapturadedatosButtonPushed, true);
+            app.CapturadedatosButton.Position = [14 35 107 23];
+            app.CapturadedatosButton.Text = 'Captura de datos';
+
+            % Create CargararchivomatButton
+            app.CargararchivomatButton = uibutton(app.TomadedatosPanel, 'push');
+            app.CargararchivomatButton.ButtonPushedFcn = createCallbackFcn(app, @CargararchivomatButtonPushed, true);
+            app.CargararchivomatButton.Position = [146 35 120 23];
+            app.CargararchivomatButton.Text = 'Cargar archivo .mat';
+
+            % Create EnviarlambdaButton
+            app.EnviarlambdaButton = uibutton(app.TomadedatosPanel, 'push');
+            app.EnviarlambdaButton.ButtonPushedFcn = createCallbackFcn(app, @EnviarlambdaButtonPushed, true);
+            app.EnviarlambdaButton.Position = [14 3 107 23];
+            app.EnviarlambdaButton.Text = 'Enviar lambda';
+
+            % Create AjustarGraficaButton
+            app.AjustarGraficaButton = uibutton(app.TomadedatosPanel, 'push');
+            app.AjustarGraficaButton.ButtonPushedFcn = createCallbackFcn(app, @AjustarGraficaButtonPushed, true);
+            app.AjustarGraficaButton.Position = [152 6 107 23];
+            app.AjustarGraficaButton.Text = 'Ajustar Grafica';
+
+            % Create LambdaEditFieldLabel
+            app.LambdaEditFieldLabel = uilabel(app.TomadedatosPanel);
+            app.LambdaEditFieldLabel.HorizontalAlignment = 'right';
+            app.LambdaEditFieldLabel.Position = [133 109 57 22];
+            app.LambdaEditFieldLabel.Text = 'Lambda';
+
+            % Create LambdaEditField
+            app.LambdaEditField = uieditfield(app.TomadedatosPanel, 'numeric');
+            app.LambdaEditField.Limits = [0 0.99];
+            app.LambdaEditField.Position = [199 109 56 22];
+            app.LambdaEditField.Value = 0.99;
+
+            % Create ProcesamientoPanel
+            app.ProcesamientoPanel = uipanel(app.UIFigure);
+            app.ProcesamientoPanel.Title = 'Procesamiento';
+            app.ProcesamientoPanel.Position = [351 486 274 162];
+
+            % Create AplicarFiltroButton
+            app.AplicarFiltroButton = uibutton(app.ProcesamientoPanel, 'push');
+            app.AplicarFiltroButton.ButtonPushedFcn = createCallbackFcn(app, @AplicarFiltroButtonPushed, true);
+            app.AplicarFiltroButton.Position = [87 109 100 23];
+            app.AplicarFiltroButton.Text = 'Aplicar Filtro';
+
+            % Create MostrardbCheckBox
+            app.MostrardbCheckBox = uicheckbox(app.ProcesamientoPanel);
+            app.MostrardbCheckBox.ValueChangedFcn = createCallbackFcn(app, @MostrardbCheckBoxValueChanged, true);
+            app.MostrardbCheckBox.Text = 'Mostrar db';
+            app.MostrardbCheckBox.Position = [20 80 79 22];
+
+            % Create MostrarHzCheckBox
+            app.MostrarHzCheckBox = uicheckbox(app.ProcesamientoPanel);
+            app.MostrarHzCheckBox.ValueChangedFcn = createCallbackFcn(app, @MostrarHzCheckBoxValueChanged, true);
+            app.MostrarHzCheckBox.Text = 'Mostrar Hz';
+            app.MostrarHzCheckBox.Position = [20 46 81 22];
+
+            % Create radmuestraCheckBox
+            app.radmuestraCheckBox = uicheckbox(app.ProcesamientoPanel);
+            app.radmuestraCheckBox.ValueChangedFcn = createCallbackFcn(app, @radmuestraCheckBoxValueChanged, true);
+            app.radmuestraCheckBox.Text = 'rad/muestra';
+            app.radmuestraCheckBox.Position = [20 12 86 22];
+
+            % Create DiseoDSPPanel
+            app.DiseoDSPPanel = uipanel(app.UIFigure);
+            app.DiseoDSPPanel.Title = 'Diseño DSP';
+            app.DiseoDSPPanel.Position = [47 13 285 248];
+
+            % Create TabGroup
+            app.TabGroup = uitabgroup(app.DiseoDSPPanel);
+            app.TabGroup.Position = [8 10 260 206];
+
+            % Create FIRTab
+            app.FIRTab = uitab(app.TabGroup);
+            app.FIRTab.Title = 'FIR';
+
+            % Create DisearFIRButton
+            app.DisearFIRButton = uibutton(app.FIRTab, 'push');
+            app.DisearFIRButton.ButtonPushedFcn = createCallbackFcn(app, @DisearFIRButtonPushed, true);
+            app.DisearFIRButton.Position = [21 17 100 23];
+            app.DisearFIRButton.Text = 'Diseñar FIR';
+
+            % Create TipodeFiltroDropDownLabel
+            app.TipodeFiltroDropDownLabel = uilabel(app.FIRTab);
+            app.TipodeFiltroDropDownLabel.HorizontalAlignment = 'right';
+            app.TipodeFiltroDropDownLabel.Position = [35 147 75 22];
+            app.TipodeFiltroDropDownLabel.Text = 'Tipo de Filtro';
+
+            % Create TipodeFiltroDropDown
+            app.TipodeFiltroDropDown = uidropdown(app.FIRTab);
+            app.TipodeFiltroDropDown.Items = {'Low Pass', 'High Pass', 'Remove Band', 'Pass Band'};
+            app.TipodeFiltroDropDown.Position = [125 147 100 22];
+            app.TipodeFiltroDropDown.Value = 'Low Pass';
+
+            % Create OrdenEditField_3Label
+            app.OrdenEditField_3Label = uilabel(app.FIRTab);
+            app.OrdenEditField_3Label.HorizontalAlignment = 'right';
+            app.OrdenEditField_3Label.Position = [74 111 38 22];
+            app.OrdenEditField_3Label.Text = 'Orden';
+
+            % Create OrdenEditField_3
+            app.OrdenEditField_3 = uieditfield(app.FIRTab, 'numeric');
+            app.OrdenEditField_3.Limits = [2 200];
+            app.OrdenEditField_3.RoundFractionalValues = 'on';
+            app.OrdenEditField_3.Position = [127 111 100 22];
+            app.OrdenEditField_3.Value = 50;
+
+            % Create Fc1EditFieldLabel
+            app.Fc1EditFieldLabel = uilabel(app.FIRTab);
+            app.Fc1EditFieldLabel.HorizontalAlignment = 'right';
+            app.Fc1EditFieldLabel.Position = [87 81 25 22];
+            app.Fc1EditFieldLabel.Text = 'Fc1';
+
+            % Create Fc1EditField
+            app.Fc1EditField = uieditfield(app.FIRTab, 'numeric');
+            app.Fc1EditField.Limits = [1 499];
+            app.Fc1EditField.Position = [127 81 100 22];
+            app.Fc1EditField.Value = 50;
+
+            % Create Fc2EditFieldLabel
+            app.Fc2EditFieldLabel = uilabel(app.FIRTab);
+            app.Fc2EditFieldLabel.HorizontalAlignment = 'right';
+            app.Fc2EditFieldLabel.Position = [87 48 25 22];
+            app.Fc2EditFieldLabel.Text = 'Fc2';
+
+            % Create Fc2EditField
+            app.Fc2EditField = uieditfield(app.FIRTab, 'numeric');
+            app.Fc2EditField.Limits = [1 499];
+            app.Fc2EditField.Position = [127 48 100 22];
+            app.Fc2EditField.Value = 150;
+
+            % Create FIRlistoLabel
+            app.FIRlistoLabel = uilabel(app.FIRTab);
+            app.FIRlistoLabel.Position = [140 16 100 22];
+            app.FIRlistoLabel.Text = 'FIR listo';
+
+            % Create IIRTab
+            app.IIRTab = uitab(app.TabGroup);
+            app.IIRTab.Title = 'IIR';
+
+            % Create TipoFiltroDropDown_2Label
+            app.TipoFiltroDropDown_2Label = uilabel(app.IIRTab);
+            app.TipoFiltroDropDown_2Label.HorizontalAlignment = 'right';
+            app.TipoFiltroDropDown_2Label.Position = [25 147 55 22];
+            app.TipoFiltroDropDown_2Label.Text = 'TipoFiltro';
+
+            % Create TipoFiltroDropDown_2
+            app.TipoFiltroDropDown_2 = uidropdown(app.IIRTab);
+            app.TipoFiltroDropDown_2.Items = {'Butterworth', 'Chebyshev I', 'Chebyshev II', 'Elliptic', 'Bessel'};
+            app.TipoFiltroDropDown_2.Position = [95 147 100 22];
+            app.TipoFiltroDropDown_2.Value = 'Butterworth';
+
+            % Create DisearIIRButton
+            app.DisearIIRButton = uibutton(app.IIRTab, 'push');
+            app.DisearIIRButton.ButtonPushedFcn = createCallbackFcn(app, @DisearIIRButtonPushed, true);
+            app.DisearIIRButton.Position = [70 32 100 23];
+            app.DisearIIRButton.Text = 'Diseñar IIR';
+
+            % Create FcEditFieldLabel
+            app.FcEditFieldLabel = uilabel(app.IIRTab);
+            app.FcEditFieldLabel.HorizontalAlignment = 'right';
+            app.FcEditFieldLabel.Position = [131 111 25 22];
+            app.FcEditFieldLabel.Text = 'Fc';
+
+            % Create FcEditField
+            app.FcEditField = uieditfield(app.IIRTab, 'numeric');
+            app.FcEditField.Limits = [1 499];
+            app.FcEditField.Position = [171 111 72 22];
+            app.FcEditField.Value = 50;
+
+            % Create OrdenEditField_2Label
+            app.OrdenEditField_2Label = uilabel(app.IIRTab);
+            app.OrdenEditField_2Label.HorizontalAlignment = 'right';
+            app.OrdenEditField_2Label.Position = [21 111 38 22];
+            app.OrdenEditField_2Label.Text = 'Orden';
+
+            % Create OrdenEditField_2
+            app.OrdenEditField_2 = uieditfield(app.IIRTab, 'numeric');
+            app.OrdenEditField_2.Limits = [1 10];
+            app.OrdenEditField_2.RoundFractionalValues = 'on';
+            app.OrdenEditField_2.Position = [74 111 30 22];
+            app.OrdenEditField_2.Value = 4;
+
+            % Create RippleEditFieldLabel
+            app.RippleEditFieldLabel = uilabel(app.IIRTab);
+            app.RippleEditFieldLabel.HorizontalAlignment = 'right';
+            app.RippleEditFieldLabel.Position = [21 69 39 22];
+            app.RippleEditFieldLabel.Text = 'Ripple';
+
+            % Create RippleEditField
+            app.RippleEditField = uieditfield(app.IIRTab, 'numeric');
+            app.RippleEditField.Limits = [0.1 5];
+            app.RippleEditField.Position = [75 69 27 22];
+            app.RippleEditField.Value = 0.5;
+
+            % Create AtenuacinEditFieldLabel
+            app.AtenuacinEditFieldLabel = uilabel(app.IIRTab);
+            app.AtenuacinEditFieldLabel.HorizontalAlignment = 'right';
+            app.AtenuacinEditFieldLabel.Position = [116 69 65 22];
+            app.AtenuacinEditFieldLabel.Text = 'Atenuación';
+
+            % Create AtenuacinEditField
+            app.AtenuacinEditField = uieditfield(app.IIRTab, 'numeric');
+            app.AtenuacinEditField.Limits = [10 100];
+            app.AtenuacinEditField.Position = [196 69 47 22];
+            app.AtenuacinEditField.Value = 40;
+
+            % Create IIRlistoLabel
+            app.IIRlistoLabel = uilabel(app.IIRTab);
+            app.IIRlistoLabel.Position = [75 3 79 22];
+            app.IIRlistoLabel.Text = 'IIR listo';
+
+            % Create EfectosTab
+            app.EfectosTab = uitab(app.TabGroup);
+            app.EfectosTab.Title = 'Efectos';
+
+            % Create AplicarEfectoButton
+            app.AplicarEfectoButton = uibutton(app.EfectosTab, 'push');
+            app.AplicarEfectoButton.ButtonPushedFcn = createCallbackFcn(app, @AplicarEfectoButtonPushed, true);
+            app.AplicarEfectoButton.Position = [70 17 100 23];
+            app.AplicarEfectoButton.Text = 'Aplicar Efecto';
+
+            % Create EfectoDropDownLabel
+            app.EfectoDropDownLabel = uilabel(app.EfectosTab);
+            app.EfectoDropDownLabel.HorizontalAlignment = 'right';
+            app.EfectoDropDownLabel.Position = [41 147 39 22];
+            app.EfectoDropDownLabel.Text = 'Efecto';
+
+            % Create EfectoDropDown
+            app.EfectoDropDown = uidropdown(app.EfectosTab);
+            app.EfectoDropDown.Items = {'Eco', 'Delay', 'Distorsión', 'Ganancia'};
+            app.EfectoDropDown.Position = [95 147 100 22];
+            app.EfectoDropDown.Value = 'Eco';
+
+            % Create TiempoDelayEditFieldLabel
+            app.TiempoDelayEditFieldLabel = uilabel(app.EfectosTab);
+            app.TiempoDelayEditFieldLabel.HorizontalAlignment = 'right';
+            app.TiempoDelayEditFieldLabel.Position = [33 111 79 22];
+            app.TiempoDelayEditFieldLabel.Text = 'Tiempo Delay';
+
+            % Create TiempoDelayEditField
+            app.TiempoDelayEditField = uieditfield(app.EfectosTab, 'numeric');
+            app.TiempoDelayEditField.Limits = [0 2];
+            app.TiempoDelayEditField.Position = [127 111 100 22];
+            app.TiempoDelayEditField.Value = 0.2;
+
+            % Create GananciaEditFieldLabel
+            app.GananciaEditFieldLabel = uilabel(app.EfectosTab);
+            app.GananciaEditFieldLabel.HorizontalAlignment = 'right';
+            app.GananciaEditFieldLabel.Position = [56 81 56 22];
+            app.GananciaEditFieldLabel.Text = 'Ganancia';
+
+            % Create GananciaEditField
+            app.GananciaEditField = uieditfield(app.EfectosTab, 'numeric');
+            app.GananciaEditField.Limits = [0 3];
+            app.GananciaEditField.Position = [127 81 100 22];
+            app.GananciaEditField.Value = 0.5;
+
+            % Create NiveldedistorsinEditFieldLabel
+            app.NiveldedistorsinEditFieldLabel = uilabel(app.EfectosTab);
+            app.NiveldedistorsinEditFieldLabel.HorizontalAlignment = 'right';
+            app.NiveldedistorsinEditFieldLabel.Position = [9 48 103 22];
+            app.NiveldedistorsinEditFieldLabel.Text = 'Nivel de distorsión';
+
+            % Create NiveldedistorsinEditField
+            app.NiveldedistorsinEditField = uieditfield(app.EfectosTab, 'numeric');
+            app.NiveldedistorsinEditField.Limits = [0 10];
+            app.NiveldedistorsinEditField.Position = [127 48 100 22];
+            app.NiveldedistorsinEditField.Value = 2;
+
+            % Create CoeficientesTab
+            app.CoeficientesTab = uitab(app.TabGroup);
+            app.CoeficientesTab.Title = 'Coeficientes';
+
+            % Create EnviarCoeficientesButton
+            app.EnviarCoeficientesButton = uibutton(app.CoeficientesTab, 'push');
+            app.EnviarCoeficientesButton.ButtonPushedFcn = createCallbackFcn(app, @EnviarCoeficientesButtonPushed, true);
+            app.EnviarCoeficientesButton.Position = [65 69 120 23];
+            app.EnviarCoeficientesButton.Text = 'Enviar Coeficientes';
+
+            % Create CoeficientesaEditField_2Label
+            app.CoeficientesaEditField_2Label = uilabel(app.CoeficientesTab);
+            app.CoeficientesaEditField_2Label.HorizontalAlignment = 'right';
+            app.CoeficientesaEditField_2Label.Position = [44 147 81 22];
+            app.CoeficientesaEditField_2Label.Text = 'Coeficientes a';
+
+            % Create CoeficientesaEditField_2
+            app.CoeficientesaEditField_2 = uieditfield(app.CoeficientesTab, 'text');
+            app.CoeficientesaEditField_2.Position = [140 147 100 22];
+
+            % Create CoeficientesbEditFieldLabel
+            app.CoeficientesbEditFieldLabel = uilabel(app.CoeficientesTab);
+            app.CoeficientesbEditFieldLabel.HorizontalAlignment = 'right';
+            app.CoeficientesbEditFieldLabel.Position = [44 111 81 22];
+            app.CoeficientesbEditFieldLabel.Text = 'Coeficientes b';
+
+            % Create CoeficientesbEditField
+            app.CoeficientesbEditField = uieditfield(app.CoeficientesTab, 'text');
+            app.CoeficientesbEditField.Position = [140 111 100 22];
+
+            % Create ExportarPanel
+            app.ExportarPanel = uipanel(app.UIFigure);
+            app.ExportarPanel.Title = 'Exportar';
+            app.ExportarPanel.Position = [351 404 274 70];
+
+            % Create GuardarCSVButton
+            app.GuardarCSVButton = uibutton(app.ExportarPanel, 'push');
+            app.GuardarCSVButton.ButtonPushedFcn = createCallbackFcn(app, @GuardarCSVButtonPushed, true);
+            app.GuardarCSVButton.Position = [10 14 100 23];
+            app.GuardarCSVButton.Text = 'Guardar CSV';
+
+            % Create GuardarMATButton
+            app.GuardarMATButton = uibutton(app.ExportarPanel, 'push');
+            app.GuardarMATButton.ButtonPushedFcn = createCallbackFcn(app, @GuardarMATButtonPushed, true);
+            app.GuardarMATButton.Position = [150 14 100 23];
+            app.GuardarMATButton.Text = 'Guardar MAT';
+
+            % Create TabGroup2
+            app.TabGroup2 = uitabgroup(app.UIFigure);
+            app.TabGroup2.Position = [661 40 752 608];
+
+            % Create SealesTab
+            app.SealesTab = uitab(app.TabGroup2);
+            app.SealesTab.Title = 'Señales';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.SealesTab);
+            title(app.UIAxes, 'Señal Original')
+            xlabel(app.UIAxes, 'Tiempo (s)')
+            ylabel(app.UIAxes, 'Amplitud')
+            zlabel(app.UIAxes, 'Z')
+            app.UIAxes.Position = [18 302 710 260];
+
+            % Create UIAxes2
+            app.UIAxes2 = uiaxes(app.SealesTab);
+            title(app.UIAxes2, 'Señal Procesada')
+            xlabel(app.UIAxes2, 'Tiempo (s)')
+            ylabel(app.UIAxes2, 'Amplitud')
+            zlabel(app.UIAxes2, 'Z')
+            app.UIAxes2.Position = [18 7 710 281];
+
+            % Create FrecuenciaTab
+            app.FrecuenciaTab = uitab(app.TabGroup2);
+            app.FrecuenciaTab.Title = 'Frecuencia';
+
+            % Create UIAxes_2
+            app.UIAxes_2 = uiaxes(app.FrecuenciaTab);
+            title(app.UIAxes_2, 'Magnitud Original')
+            xlabel(app.UIAxes_2, 'Frecuencia (Hz)')
+            ylabel(app.UIAxes_2, 'jjj')
+            zlabel(app.UIAxes_2, 'Z')
+            app.UIAxes_2.Position = [18 323 342 239];
+
+            % Create UIAxes_3
+            app.UIAxes_3 = uiaxes(app.FrecuenciaTab);
+            title(app.UIAxes_3, 'Magnitud Procesada')
+            xlabel(app.UIAxes_3, 'Frecuencia (Hz)')
+            ylabel(app.UIAxes_3, 'FFF')
+            zlabel(app.UIAxes_3, 'Z')
+            app.UIAxes_3.Position = [390 317 339 239];
+
+            % Create UIAxes_4
+            app.UIAxes_4 = uiaxes(app.FrecuenciaTab);
+            title(app.UIAxes_4, 'Fase Original')
+            xlabel(app.UIAxes_4, 'Frecuencia (Hz)')
+            ylabel(app.UIAxes_4, 'Fase (°)')
+            zlabel(app.UIAxes_4, 'Z')
+            app.UIAxes_4.Position = [18 50 341 239];
+
+            % Create UIAxes_5
+            app.UIAxes_5 = uiaxes(app.FrecuenciaTab);
+            title(app.UIAxes_5, 'Fase Procesada')
+            xlabel(app.UIAxes_5, 'Frecuencia (Hz)')
+            ylabel(app.UIAxes_5, 'Fase (°)')
+            zlabel(app.UIAxes_5, 'Z')
+            app.UIAxes_5.Position = [407 52 322 239];
+
+            % Create AudioTab_2
+            app.AudioTab_2 = uitab(app.TabGroup2);
+            app.AudioTab_2.Title = 'Audio';
+
+            % Create UIAxes_6
+            app.UIAxes_6 = uiaxes(app.AudioTab_2);
+            title(app.UIAxes_6, 'Audio Original')
+            xlabel(app.UIAxes_6, 'Tiempo (s)')
+            ylabel(app.UIAxes_6, 'jjj')
+            zlabel(app.UIAxes_6, 'Z')
+            app.UIAxes_6.Position = [18 323 342 239];
+
+            % Create UIAxes_7
+            app.UIAxes_7 = uiaxes(app.AudioTab_2);
+            title(app.UIAxes_7, 'Audio Procesado')
+            xlabel(app.UIAxes_7, 'Tiempo (s)')
+            ylabel(app.UIAxes_7, 'FFF')
+            zlabel(app.UIAxes_7, 'Z')
+            app.UIAxes_7.Position = [390 317 339 239];
+
+            % Create UIAxes_8
+            app.UIAxes_8 = uiaxes(app.AudioTab_2);
+            title(app.UIAxes_8, 'Espectro Audio original')
+            xlabel(app.UIAxes_8, 'Frecuencia (Hz)')
+            ylabel(app.UIAxes_8, 'Fase (°)')
+            zlabel(app.UIAxes_8, 'Z')
+            app.UIAxes_8.Position = [18 50 341 239];
+
+            % Create UIAxes_9
+            app.UIAxes_9 = uiaxes(app.AudioTab_2);
+            title(app.UIAxes_9, 'Espectro Audio Procesado')
+            xlabel(app.UIAxes_9, 'Frecuencia (Hz)')
+            ylabel(app.UIAxes_9, 'Fase (°)')
+            zlabel(app.UIAxes_9, 'Z')
+            app.UIAxes_9.Position = [407 52 322 239];
+
+            % Create ExtrasPanel
+            app.ExtrasPanel = uipanel(app.UIFigure);
+            app.ExtrasPanel.Title = 'Extras';
+            app.ExtrasPanel.Position = [351 238 274 152];
+
+            % Create CargararchivosvariosButton
+            app.CargararchivosvariosButton = uibutton(app.ExtrasPanel, 'push');
+            app.CargararchivosvariosButton.ButtonPushedFcn = createCallbackFcn(app, @CargararchivosvariosButtonPushed, true);
+            app.CargararchivosvariosButton.Position = [70 95 135 23];
+            app.CargararchivosvariosButton.Text = 'Cargar archivos varios';
+
+            % Create AudiooriginalButton
+            app.AudiooriginalButton = uibutton(app.ExtrasPanel, 'push');
+            app.AudiooriginalButton.ButtonPushedFcn = createCallbackFcn(app, @AudiooriginalButtonPushed, true);
+            app.AudiooriginalButton.Position = [20 55 100 23];
+            app.AudiooriginalButton.Text = 'Audio original';
+
+            % Create AudioProcesadoButton
+            app.AudioProcesadoButton = uibutton(app.ExtrasPanel, 'push');
+            app.AudioProcesadoButton.ButtonPushedFcn = createCallbackFcn(app, @AudioProcesadoButtonPushed, true);
+            app.AudioProcesadoButton.Position = [150 55 106 23];
+            app.AudioProcesadoButton.Text = 'Audio Procesado';
+
+            % Create DetenerAudioButton
+            app.DetenerAudioButton = uibutton(app.ExtrasPanel, 'push');
+            app.DetenerAudioButton.ButtonPushedFcn = createCallbackFcn(app, @DetenerAudioButtonPushed, true);
+            app.DetenerAudioButton.Position = [87 15 100 23];
+            app.DetenerAudioButton.Text = 'Detener Audio';
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = app1
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
